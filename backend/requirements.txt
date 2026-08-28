@@ -1,9 +1,13 @@
 fastapi
 uvicorn[standard]
 sqlalchemy
+pymysql
+cryptography
 python-dotenv
 pydantic
 pydantic-settings
+supabase
+PyJWT
 google-generativeai
 httpx
 python-multipart

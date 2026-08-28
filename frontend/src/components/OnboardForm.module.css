@@ -1,0 +1,154 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 2rem 1rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid rgba(111, 187, 124, 0.15);
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.wave { font-size: 2.2rem; display: block; margin-bottom: 0.5rem; }
+.header h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+}
+.header p { color: var(--text-muted); font-size: 0.9rem; }
+
+/* Step indicators */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2rem;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.step span {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+}
+.step.active { color: var(--leaf); }
+.step.active span { background: var(--leaf); color: #0E1912; }
+.stepLine {
+  flex: 1;
+  height: 1px;
+  background: rgba(111,187,124,0.15);
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Field */
+.field { display: flex; flex-direction: column; gap: 0.6rem; }
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Language grid */
+.langGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.langBtn {
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(111,187,124,0.12);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.langBtn:hover { border-color: var(--leaf); color: var(--text); }
+.langBtn.selected {
+  border-color: var(--leaf);
+  background: rgba(111,187,124,0.12);
+  color: var(--leaf);
+}
+
+/* Consent */
+.consentBox {
+  background: var(--surface-2);
+  border: 1px solid rgba(111,187,124,0.1);
+  border-radius: 12px;
+  padding: 1rem;
+}
+.consentLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.checkbox {
+  flex-shrink: 0;
+  width: 16px; height: 16px;
+  margin-top: 2px;
+  accent-color: var(--leaf);
+  cursor: pointer;
+}
+
+/* Error */
+.error {
+  color: var(--danger);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+/* Submit */
+.submitBtn {
+  padding: 13px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--gold), var(--gold-strong));
+  color: #0E1912;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: box-shadow var(--transition), transform var(--transition), opacity var(--transition);
+}
+.submitBtn:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(224,178,78,0.35);
+  transform: translateY(-1px);
+}
+.submitBtn:disabled { opacity: 0.45; cursor: not-allowed; }

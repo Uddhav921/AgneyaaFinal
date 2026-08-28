@@ -48,8 +48,8 @@ export default function Onboarding() {
 
       <div className={styles.flow}>
         {STEPS.map((step, idx) => (
-          <>
-            <div key={step.number} className={`${styles.card} ${styles[step.color]}`}>
+          <div key={step.number} style={{ display: 'contents' }}>
+            <div className={`${styles.card} ${styles[step.color]}`}>
               {/* Step number */}
               <div className={styles.stepBadge}>{step.number}</div>
 
@@ -70,9 +70,8 @@ export default function Onboarding() {
               </ul>
             </div>
 
-            {/* Arrow between steps */}
             {idx < STEPS.length - 1 && <ArrowRight key={`arrow-${idx}`} />}
-          </>
+          </div>
         ))}
       </div>
 

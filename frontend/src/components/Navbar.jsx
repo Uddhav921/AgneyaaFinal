@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { supabase, signInWithGoogle, signOut } from '../lib/supabase';
 import styles from './Navbar.module.css';
 
 const GoogleIcon = () => (
@@ -10,6 +12,42 @@ const GoogleIcon = () => (
 );
 
 export default function Navbar() {
+  const [user, setUser]       = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    // Get current session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Subscribe to future auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignIn = async () => {
+    try {
+      setLoading(true);
+      await signInWithGoogle();
+    } catch (err) {
+      console.error('Sign-in error:', err.message);
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setUser(null);
+  };
+
+  const avatarUrl  = user?.user_metadata?.avatar_url;
+  const userName   = user?.user_metadata?.full_name || user?.email?.split('@')[0];
+
   return (
     <nav className={styles.nav}>
       {/* Logo */}
@@ -18,11 +56,33 @@ export default function Navbar() {
         <span className={styles.brand}>Agneyaa</span>
       </a>
 
-      {/* Sign In — top right */}
-      <button className={styles.signInBtn} id="btn-sign-in" aria-label="Sign in with Google">
-        <GoogleIcon />
-        Sign In
-      </button>
+      {/* Auth area — top right */}
+      {user ? (
+        <div className={styles.userArea}>
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={userName} className={styles.avatar} />
+          ) : (
+            <div className={styles.avatarFallback}>
+              {userName?.[0]?.toUpperCase()}
+            </div>
+          )}
+          <span className={styles.userName}>{userName}</span>
+          <button className={styles.signOutBtn} onClick={handleSignOut} aria-label="Sign out">
+            Sign Out
+          </button>
+        </div>
+      ) : (
+        <button
+          className={styles.signInBtn}
+          id="btn-sign-in"
+          onClick={handleSignIn}
+          disabled={loading}
+          aria-label="Sign in with Google"
+        >
+          <GoogleIcon />
+          {loading ? 'Redirecting…' : 'Sign In'}
+        </button>
+      )}
     </nav>
   );
 }

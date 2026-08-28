@@ -64,6 +64,65 @@
   transform: translateY(0);
 }
 
+.signInBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Signed-in user area ── */
+.userArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--leaf);
+  object-fit: cover;
+}
+
+.avatarFallback {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--leaf));
+  color: #0E1912;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.userName {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.signOutBtn {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 118, 106, 0.4);
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.signOutBtn:hover {
+  background: rgba(226, 118, 106, 0.1);
+  border-color: var(--danger);
+}
+
 @keyframes pulseFlame {
   0%, 100% { filter: drop-shadow(0 0 6px var(--gold)); }
   50%       { filter: drop-shadow(0 0 14px var(--gold-strong)); }
