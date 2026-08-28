@@ -11,6 +11,7 @@ import OnboardForm         from './components/OnboardForm';
 import InputMethodSelect   from './components/InputMethodSelect';
 import VoiceRecorder       from './components/VoiceRecorder';
 import InputForm           from './components/InputForm';
+import BeejChat            from './components/BeejChat';
 
 const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -21,6 +22,7 @@ const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
   'inputMethod'  → Step 2a: choose Text or Voice input
   'voiceInput'   → Step 2b: voice recording page
   'inputs'       → Step 2c: text form (pre-filled if from voice)
+  'chat'         → Step 3: Beej conversational AI chat
   'callback'     → /auth/callback route
 */
 
@@ -30,6 +32,7 @@ export default function App() {
   const [checkingOnboard,   setCheckingOnboard]   = useState(false);
   const [submitLoading,     setSubmitLoading]     = useState(false);
   const [voiceInitialData,  setVoiceInitialData]  = useState({});
+  const [businessContext,   setBusinessContext]   = useState({});
 
   // Handle /auth/callback route
   const isCallback = window.location.pathname === '/auth/callback';
@@ -92,16 +95,10 @@ export default function App() {
     setAppState('inputs');
   };
 
-  // Step 2 complete → trigger Beej analysis (next phase)
+  // Step 2 complete → open Beej chat with business context
   const handleInputSubmit = async (formData) => {
-    setSubmitLoading(true);
-    try {
-      // TODO: Create business entry then run Beej analysis
-      console.log('Business inputs submitted:', formData);
-      alert('✅ Inputs received! AI analysis pipeline coming next.');
-    } finally {
-      setSubmitLoading(false);
-    }
+    setBusinessContext(formData);
+    setAppState('chat');
   };
 
   // Loading state while checking session / onboard status
@@ -165,6 +162,16 @@ export default function App() {
           onBack={() => setAppState('inputMethod')}
         />
       </>
+    );
+  }
+
+  if (appState === 'chat') {
+    return (
+      <BeejChat
+        businessContext={businessContext}
+        session={session}
+        onBack={() => setAppState('inputs')}
+      />
     );
   }
 

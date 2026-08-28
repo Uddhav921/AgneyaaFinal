@@ -1,0 +1,382 @@
+# Agneyaa (SIH26091) — Combined Dataset Design
+### Hyper-local Business & Financial Feasibility Data Architecture
+
+This design merges the **Agneyaa project spec** (Beej/Mool/Shakha/Chhaya pipeline) with the **feasibility note's** core finding: no Indian dataset gives true village-level demand/competitor/pricing data, so the dataset must be built as a **tiered, source-tagged evidence model**, not a flat "complete" table. Every record below carries `data_tier` and `evidence_type` fields so the app never silently presents an estimate as a fact.
+
+---
+
+## 1. Data Dictionary
+
+### 1.1 Location Reference
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| village_id | Canonical village identifier | string (PK) | India Post PIN–Village Directory | Raw | `village_id: MH-PUN-0231` | Primary join key across all tables |
+| village_name | Village name | string | India Post PIN Directory | Raw | "Wadgaon" | Display, user input matching |
+| block_taluka | Block/Taluka name | string | India Post PIN Directory / Census | Raw | "Haveli" | Block-tier fallback joins |
+| district | District name | string | India Post / Census / Udyam / data.gov.in | Raw | "Pune" | District-tier fallback joins |
+| state | State name | string | India Post / Census | Raw | "Maharashtra" | State-tier fallback, scheme rules |
+| pincode | PIN code | string | India Post PIN Directory | Raw | "412205" | Geocoding, address validation |
+| lat, lon | Approx. village centroid coordinates | float, float | Census Village Directory / OSM geocode | Raw/Derived | 18.52, 73.85 | Radius queries to OSM/Google Places |
+| resolution_tier_used | Which geographic tier actually answered a given data request | enum(village/block/district/state) | System-generated | Derived | "block" | Core UI honesty label — shown to user |
+
+### 1.2 Demographics & Structural Facts
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| population_total | Village population | integer | Census 2011 Village Directory | Raw | 3,420 | Demand-pool sizing (stale, structural only) |
+| households_total | Number of households | integer | Census 2011 | Raw | 612 | Household-based demand proxies |
+| literacy_rate | % literate population | float | Census 2011 | Raw | 71.2 | Market-readiness signal for education/digital services |
+| amenities_present | List of existing amenities (bank, post office, market, school) | JSON/array | Census 2011 Village Amenities | Raw | ["bank","market","PHC"] | Infrastructure gap analysis |
+| sc_st_population_pct | SC/ST population share (aggregated only) | float | SECC 2011 (aggregated) | Raw | 18.4 | Scheme-eligibility skew context — never re-identified to individuals |
+| income_proxy_band | Aggregated household income/landholding band | categorical | SECC 2011 (aggregated) | Raw | "low-marginal" | Loan-repayment capacity context, calibration only |
+| census_data_age_years | Age of Census data at query time | integer | Derived from Census year vs. current date | Derived | 15 | Confidence weighting — flag as stale |
+
+### 1.3 Business Registration & Competition
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| udyam_registered_count_district | Registered MSME count in district | integer | Udyam Registration (data.gov.in) | Raw | 4,812 | District-tier competitor baseline |
+| udyam_sector_split | Registered MSME count by sector/NIC code | JSON | Udyam Registration | Raw | {"food_processing":320} | Sector-specific competition density |
+| osm_poi_count | Count of shop/business POIs within radius of village | integer | OpenStreetMap Overpass API | Raw | 6 | Local competitor signal (sparse — verify density first) |
+| osm_poi_category_split | POI counts by free-form category | JSON | OSM Overpass | Raw | {"grocery":3,"tailor":1} | Category-level competitor detail |
+| gplaces_competitor_count | Competitor count from Google Places within radius | integer | Google Places API | Raw | 9 | Best point-level competitor signal (paid, budget-limited) |
+| gplaces_avg_rating | Average rating of nearby same-category businesses | float | Google Places API | Raw | 4.1 | Quality-of-competition indicator |
+| user_reported_competitor_count | Competitor count entered by user/field agent | integer | User Validation Questionnaire | Raw (User Validated) | 5 | Cross-check signal #2 against OSM/Places |
+| competitor_signal_agreement_flag | Whether the two independent competitor signals agree | boolean | System-generated | Derived | false | Triggers "disagreement flag" shown to user instead of averaging |
+| shg_enterprise_presence | Count/type of SHG-linked micro-enterprises nearby | integer/JSON | DAY-NRLM/SHG State Portals | Raw | 3 tailoring SHGs | Informal-sector competition context (state-inconsistent coverage) |
+| ngo_partner_local_count | Verified local competitor/business count from NGO/SHG partner | integer | NGO/SHG Partner Ground Data | Raw (**External/Required — post-hackathon MoU**) | 12 | Highest-trust village-tier competitor number, not available for demo |
+
+### 1.4 Market & Pricing
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| nearest_mandi_name | Nearest Agmarknet/e-NAM mandi to village | string | Agmarknet/e-NAM | Raw | "Pune APMC" | Pricing baseline reference |
+| commodity_price_daily | Daily price of relevant commodity at nearest mandi | float (₹/quintal or unit) | Agmarknet/e-NAM | Raw | 2,150 | Pricing input for agri/dairy/food-processing businesses — labeled as proxy, not village price |
+| commodity_price_trend_30d | 30-day price trend at nearest mandi | float (% change) | Derived from Agmarknet time series | Derived | +4.2% | Seasonality/timing signal |
+| price_data_distance_km | Distance from village to the mandi supplying the price | float | Derived (geocode distance) | Derived | 14.3 | Confidence weighting for price proxy |
+
+### 1.5 Financial (Household/Region Calibration)
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| rural_avg_household_income_state | State/district average rural household income | float (₹/year) | NABARD NAFIS Survey (PDF reports) | Raw | 1,22,000 | Calibrating demand/affordability estimates, not per-user answers |
+| rural_borrowing_behavior_index | Aggregate borrowing/financial-inclusion stats | categorical/float | NABARD NAFIS | Raw | "moderate access" | Loan-uptake likelihood context |
+
+### 1.6 User & Business Input (App-collected)
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| user_id | Internal user identifier | string (PK) | Agneyaa `users` table (Supabase/MySQL) | Raw | `usr_00231` | Join to onboarding/business records |
+| full_name, phone | User identity fields | string | InputForm | Raw | — | Contact, report delivery |
+| language_pref | Selected UI language | enum(8 languages) | OnboardForm | Raw | "Marathi" | Multilingual report generation |
+| business_category | Selected business category | categorical (12 categories) | InputForm | Raw | "Food Processing" | Sector filter for all downstream joins |
+| business_description_text | Free-text business idea | string | InputForm | Raw | "Setting up a small dairy processing unit" | LLM interpretation input (MODEL layer only) |
+| available_margin_money | User's own capital available | float (₹) | InputForm | Raw | 50,000 | Mool financial calculation input |
+| village_id (FK) | Selected location | string | InputForm (geocoded/matched) | Raw | `MH-PUN-0231` | Join key to all location-tier tables |
+| consent_flag | Data-sharing consent | boolean | OnboardForm | Raw | true | Legal gate before any evidence retrieval or Community Layer exposure |
+| entry_mode | Self-entered vs. agent-assisted | enum(self/agent) | InputForm | Raw | "agent" | Triggers separate consent flow for agent-entered data |
+
+### 1.7 Evidence Metadata (attached to every retrieved field above)
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| evidence_value | The actual data value | varies | Any above | — | 9 | The number shown |
+| evidence_source | Which dataset produced it | string | System-generated | Derived | "Google Places API" | Attribution shown in report |
+| evidence_location_level | Tier the value came from | enum(village/block/district/state) | System-generated | Derived | "district" | Honesty label |
+| evidence_date | When the source data was published/fetched | date | System-generated | Derived | 2026-08-20 | Staleness display |
+| evidence_type | Verified / Derived / User Validated / Estimated / Unknown | enum | System-generated | Derived | "Estimated" | Core trust signal per field |
+| confidence_score | 0–1 confidence weight | float | System-generated (rule-based) | Derived | 0.62 | Report ranking, "insufficient evidence" trigger |
+
+### 1.8 Financial Calculation (Mool) — Deterministic, No LLM
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| project_cost | Total estimated project cost | float (₹) | Mool engine (rule-based, from business_category benchmarks) | Derived | 3,00,000 | Base of all loan math |
+| margin_money_pct | % of project cost from user's own capital | float | Scheme rule constant | Raw (scheme rule) | 10% | Loan-to-margin split |
+| loan_amount | project_cost − margin_money | float (₹) | Calculated | Derived (formula) | 2,50,000 | Scheme matching, EMI calc |
+| interest_rate_pct | Applicable interest rate | float | Shakha scheme rules (must be verified against current circular) | Raw (external, versioned) | 6% | EMI formula |
+| tenure_months | Loan repayment tenure | integer | Scheme rule | Raw (scheme rule) | 60 | EMI formula |
+| moratorium_months | Grace period before EMI starts | integer | Scheme rule | Raw (scheme rule) | 6 | Cash-flow planning |
+| emi_amount | Monthly EMI | float (₹) | Calculated (standard amortization formula) | Derived (formula) | 4,830 | Feasibility go/no-go |
+| working_capital_estimate | Estimated recurring working capital need | float (₹) | Mool engine, category benchmark | Derived | 40,000 | Cash-flow feasibility |
+
+### 1.9 Scheme Matching (Shakha)
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| scheme_id | Matched government scheme | string | PMEGP/MUDRA/NSFDC/NBCFDC/NSKFDC official circulars (**External/Required — verify pre-demo**) | Raw | "PMEGP" | Eligibility, rate/tenure source |
+| eligibility_criteria_met | Boolean list of criteria checks | JSON | Scheme rule engine | Derived | {"category_match": true, "loan_cap_ok": true} | Go/no-go reasoning trail |
+| required_documents | Document checklist for matched scheme | array | Scheme rule data | Raw | ["Aadhaar","caste certificate","project report"] | Chhaya report output |
+
+### 1.10 Feasibility Report / Prediction Targets (Chhaya)
+
+| Field Name | Description | Data Type | Source Dataset | Derived/Raw | Example Value | Used For |
+|---|---|---|---|---|---|---|
+| local_feasibility_flag | Village/block-level go / caution / insufficient-evidence | enum | Derived from evidence layer | **Target/Prediction** | "caution" | Module 1 output |
+| financial_feasibility_flag | Whether EMI + working capital fits margin money & income proxy | boolean | Derived from Mool | Derived (rule, not ML) | true | Module 2 output |
+| overall_recommendation | Final combined go/no-go | enum(go/conditional-go/no-go/insufficient-evidence) | Derived (rule fusion of above) | **Target** | "conditional-go" | Chhaya headline result |
+| risk_factors | List of flagged risks | array of strings | Derived from evidence disagreement, staleness, low confidence | Derived | ["competitor signals disagree","price data 14km away"] | Transparency, report body |
+
+---
+
+## 2. Dataset Combination / Join Strategy
+
+**Primary key spine:** `village_id` → `block_taluka` → `district` → `state` (from the India Post PIN–Village Directory, which is the only dataset with clean village→block→district→state mapping and should be the master geo-reference table everything else joins onto).
+
+| Join | Left | Right | Key(s) | Tier |
+|---|---|---|---|---|
+| 1 | India Post PIN Directory | Census 2011 Village Directory | `village_name` + `district` (fuzzy-match; Census village codes differ from PIN codes, so a name+district+state match with manual reconciliation table is required) | Village |
+| 2 | India Post PIN Directory | SECC 2011 (aggregated) | same fuzzy match as above, aggregated to village or block level only | Village/Block |
+| 3 | Village record | Udyam Registration | `district` | District |
+| 4 | Village record (lat/lon) | OSM Overpass | radius query on `lat, lon` (no key join — spatial query) | Point |
+| 5 | Village record (lat/lon) | Google Places | radius query on `lat, lon` | Point |
+| 6 | Village record | Nearest Agmarknet mandi | nearest-neighbor spatial match on mandi lat/lon, store `price_data_distance_km` | Block/cluster |
+| 7 | Village record | NABARD NAFIS | `state` (+ `district` where survey grain allows) | District/State |
+| 8 | Village record | DAY-NRLM/SHG portal data | `village_id` or `block_taluka` (varies by state — no universal key, needs per-state adapter) | Village/Block (inconsistent) |
+| 9 | user_id (InputForm) | village_id | user selects/geocodes village on input → resolves to `village_id` | — |
+| 10 | user_id | Mool/Shakha/Chhaya outputs | `user_id` + `business_id` | — |
+
+**Critical caveat:** joins 1, 2, and 8 are **fuzzy/manual**, not clean key joins — village naming is inconsistent across Census, SECC, and PIN directory, so a one-time reconciliation crosswalk table (`village_name_variants`) mapping each source's spelling to the canonical `village_id` must be built and maintained; this is real data-engineering work, not a formality.
+
+---
+
+## 3. Final Combined Dataset Structure (Star Schema, not one flat table)
+
+A single flattened table is **not realistic** — it would force village-tier and district-tier data into the same row and hide which tier answered what. Instead, use a star schema:
+
+```
+                    ┌───────────────────────┐
+                    │   dim_location        │  (village_id PK)
+                    │ village/block/district │
+                    │ /state, lat/lon        │
+                    └──────────┬─────────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        ▼                      ▼                      ▼
+┌───────────────┐     ┌────────────────┐     ┌──────────────────┐
+│ fact_demographics│  │ fact_competition │     │ fact_market_price │
+│ (Census/SECC)    │  │ (Udyam/OSM/GP/   │     │ (Agmarknet)        │
+│ evidence_type,   │  │  user/NGO)       │     │ evidence_type,     │
+│ evidence_date    │  │ evidence_type    │     │ distance_km         │
+└───────────────┘     └────────────────┘     └──────────────────┘
+        │                      │                      │
+        └──────────────────────┴──────────┬───────────┘
+                                            ▼
+                                 ┌────────────────────┐
+                                 │  fact_user_business  │  (user_id, business_id, village_id FK)
+                                 │  category, margin,    │
+                                 │  description           │
+                                 └──────────┬─────────────┘
+                                            ▼
+                                 ┌────────────────────┐
+                                 │  fact_financial (Mool)│  deterministic
+                                 └──────────┬─────────────┘
+                                            ▼
+                                 ┌────────────────────┐
+                                 │  fact_scheme (Shakha) │
+                                 └──────────┬─────────────┘
+                                            ▼
+                                 ┌────────────────────┐
+                                 │  fact_report (Chhaya) │  targets/recommendation
+                                 └────────────────────┘
+```
+
+Every `fact_*` row carries the Evidence Metadata block (§1.7) as columns, not a separate audit log — this is what lets the UI show a source/date/confidence tag next to every single number in the report.
+
+---
+
+## 4. Important Derived Features & Formulas
+
+| Feature | Formula |
+|---|---|
+| `loan_amount` | `project_cost × (1 − margin_money_pct)` |
+| `emi_amount` | Standard reducing-balance EMI: `P × r × (1+r)^n / ((1+r)^n − 1)`, where `P = loan_amount`, `r = interest_rate_pct/12/100`, `n = tenure_months` |
+| `debt_to_income_estimate` | `(emi_amount × 12) / rural_avg_household_income_state` — flagged high-risk if > ~0.4 |
+| `competitor_signal_agreement_flag` | `abs(gplaces_competitor_count − user_reported_competitor_count) ≤ 1` (threshold tunable) |
+| `market_saturation_index` | `(osm_poi_count + gplaces_competitor_count) / population_total × 1000` — competitors per 1,000 residents, tier-labelled |
+| `price_confidence_weight` | inverse function of `price_data_distance_km` (closer mandi → higher weight) |
+| `census_staleness_penalty` | `confidence_score −= 0.02 × census_data_age_years` (capped) — demographic confidence decays over the 15-year gap |
+| `overall_confidence_score` | weighted average of all field-level `confidence_score`s feeding into `local_feasibility_flag` |
+
+---
+
+## 5. Analysis That Can Be Performed
+
+- District/block-level **market saturation** by business category (Udyam + OSM + Places density).
+- **Price-trend and seasonality** analysis for agri/dairy/food-processing categories via Agmarknet time series.
+- **Scheme uptake feasibility**: what share of applicants in a district/category fit standard PMEGP/MUDRA/NSFDC eligibility bands.
+- **Evidence-tier coverage analysis**: what % of villages onboarded so far actually have village-tier vs. block/district-tier data — useful for judges and for prioritizing NGO partnerships.
+- **Affordability analysis**: EMI burden vs. NAFIS income proxy across categories/regions.
+- **Data-disagreement analysis**: rate at which OSM/Places/user-reported competitor counts disagree, by state — informs where ground-truthing is most needed.
+
+---
+
+## 6. Prediction Targets That Can Realistically Be Predicted
+
+| Target | Realistic Now? | Why |
+|---|---|---|
+| `financial_feasibility_flag` (EMI/margin fit) | **Yes — deterministic**, not ML | Pure arithmetic on user inputs + scheme rules; no model needed, and per the feasibility note this must *never* touch an LLM |
+| `overall_recommendation` (go/conditional/no-go) | **Yes — rule-based fusion**, not ML for MVP | Combine financial flag + evidence confidence thresholds; defensible and explainable, which matters more than an ML score here |
+| `local_feasibility_flag` (demand/competition rating) | **Partially** — only where block/district data exists with reasonable density | Rule-based scoring (saturation index + amenity presence) is realistic; a learned model is not, because there is no labeled ground-truth outcome data (no historical "this business succeeded/failed here" dataset) |
+| Business success/failure probability | **Not realistic for this MVP** | No historical outcome dataset exists (SIH note explicitly warns against inventing this); would require NGO/SHG partner longitudinal data first |
+| Demand volume forecast (e.g., units/month) | **Not realistic** without POS/sales history, which doesn't exist at village level | Flag as future work once NGO ground data or CSR-tracked pilot outcomes accumulate |
+
+---
+
+## 7. Recommended Approach Per Target
+
+| Target | Approach |
+|---|---|
+| Financial feasibility | Deterministic formula engine (no ML) |
+| Scheme matching | Rule engine / decision table against versioned scheme-rule dataset |
+| Local feasibility score | Weighted rule-based scoring function over evidence fields (saturation index, amenity count, price-trend, confidence score) — **not ML** at MVP stage; a supervised model has nothing to learn from without labeled outcomes |
+| Risk-factor flagging | Rule-based triggers (evidence disagreement, staleness, low confidence, missing tier) |
+| Future (post-MVP, once outcome data exists) | Once NGO/SHG partner data provides real business outcomes over 1–2 years, a gradient-boosted model (e.g., XGBoost/LightGBM) on tabular evidence features could predict success likelihood — not before |
+
+---
+
+## 8. Required Historical Data / Time Period
+
+- **Agmarknet prices**: minimum 12 months, ideally 24, to compute seasonal trend rather than a single-day snapshot.
+- **Census/SECC**: single 2011 snapshot only — no time series exists; treat as static structural context, refresh only when Census 2027+ data is released.
+- **NAFIS survey**: latest published round only (periodic, not annual) — recalibrate estimates when a new round is published.
+- **Scheme interest rates/caps**: must be re-pulled at each report generation, not cached long-term, since these are revised periodically by MoSJE/NSFDC.
+- **NGO/SHG outcome data (future)**: would need at least 12–24 months of tracked business outcomes before any predictive model is attempted.
+
+---
+
+## 9. Data Quality & Preprocessing Requirements
+
+- Build and maintain the `village_name_variants` crosswalk (Census/SECC/PIN spelling reconciliation) before any join runs.
+- Deduplicate OSM POIs (common issue: same shop mapped twice with slightly different tags).
+- Standardize business category taxonomy across Udyam NIC codes, InputForm's 12 categories, and OSM/Places categories into one internal taxonomy — currently three incompatible category systems exist.
+- Null-handling: never impute a missing village-tier value from district data without setting `evidence_location_level = "district"` and lowering `confidence_score` — no silent fallback.
+- Rate-limit and cache Google Places responses per ToS; do not persist raw Places data beyond permitted caching windows.
+- Encrypt `sc_st_population_pct` / `income_proxy_band` at rest; never log in plaintext; strip before any Community Layer exposure.
+- Version-control the scheme-rule table (`interest_rate_pct`, `tenure_months`, caps) with an effective-date field so historical reports remain reproducible after a rate change.
+
+---
+
+## 10. Sample Records
+
+**`dim_location`**
+```json
+{
+  "village_id": "MH-PUN-0231",
+  "village_name": "Wadgaon",
+  "block_taluka": "Haveli",
+  "district": "Pune",
+  "state": "Maharashtra",
+  "pincode": "412205",
+  "lat": 18.52, "lon": 73.85
+}
+```
+
+**`fact_competition`**
+```json
+{
+  "village_id": "MH-PUN-0231",
+  "business_category": "Food Processing",
+  "osm_poi_count": 6,
+  "gplaces_competitor_count": 9,
+  "user_reported_competitor_count": 5,
+  "competitor_signal_agreement_flag": false,
+  "evidence_type": "Derived",
+  "evidence_location_level": "block",
+  "evidence_date": "2026-08-20",
+  "confidence_score": 0.58
+}
+```
+
+**`fact_financial` (Mool)**
+```json
+{
+  "user_id": "usr_00231",
+  "project_cost": 300000,
+  "margin_money_pct": 0.10,
+  "loan_amount": 250000,
+  "interest_rate_pct": 6.0,
+  "tenure_months": 60,
+  "moratorium_months": 6,
+  "emi_amount": 4830,
+  "working_capital_estimate": 40000
+}
+```
+
+**`fact_report` (Chhaya)**
+```json
+{
+  "user_id": "usr_00231",
+  "local_feasibility_flag": "caution",
+  "financial_feasibility_flag": true,
+  "overall_recommendation": "conditional-go",
+  "risk_factors": [
+    "competitor signals disagree (OSM=6, Places=9, user=5)",
+    "price data sourced 14.3km away, labeled as proxy",
+    "demographic data is 15 years old"
+  ]
+}
+```
+
+---
+
+## 11. Limitations & Additional Data Required
+
+- **No true village-level demand/competitor/pricing dataset exists in India today** — this is the central limitation the whole schema is designed around, not a gap to hide.
+- **NGO/SHG partner ground data** is the only path to real village-tier competitor/demand truth; it requires a partnership/MoU and is explicitly out of scope for the hackathon timeline — mark every field dependent on it as `External/Required Data`.
+- **Scheme interest rates and eligibility caps** must be verified against the current official MoSJE/NSFDC/NBCFDC/NSKFDC circular before any public demo — this is flagged as the highest-credibility-risk item.
+- **SECC 2011 and Census 2011** are both 15 years stale; usable only for slow-changing structural facts, never presented as "current."
+- **Google Places** is the strongest point-level signal but is budget-limited and cannot scale to full national coverage without a paid tier.
+- **DAY-NRLM/SHG portal data** coverage and format vary by state — treat as a bonus signal, not a dependency for MVP.
+- **No historical business-outcome dataset exists anywhere in this stack** — this is why success/failure prediction and demand forecasting are explicitly excluded from the realistic MVP scope and deferred to a future phase once outcome data accumulates.
+
+---
+
+## 12. API Reference — Actual Endpoints for Implementation
+
+Verified against current documentation (Aug 2026). Build a thin adapter service per source so the Evidence API (§4 of the note) can call all of these behind one interface.
+
+### 12.1 data.gov.in / api.data.gov.in (Udyam MSME data, PMEGP/scheme datasets, MGNREGA)
+- **Auth:** free API key from your <a href="https://data.gov.in" style="color:#0000EE; text-decoration:underline;">data.gov.in</a> account (`My Account → API Key`).
+- **Pattern:** <a href="https://api.data.gov.in/resource/" style="color:#0000EE; text-decoration:underline;"><code>https://api.data.gov.in/resource/&lt;RESOURCE-ID&gt;?api-key=&lt;KEY&gt;&format=json&limit=&lt;N&gt;&offset=&lt;N&gt;&filters[&lt;field&gt;]=&lt;value&gt;</code></a>
+- Each dataset (Udyam district counts, PMEGP beneficiary lists, etc.) has its **own resource ID** — you must search data.gov.in's catalog for the exact resource ID per dataset; there is no single "Udyam API," only per-dataset resource endpoints.
+- Optional: the community Python wrapper `datagovindia` (`pip install datagovindia`) wraps this same REST pattern with search/discovery helpers — useful for finding resource IDs quickly, not required.
+- **Rate limits/quotas:** enforced per key; check your account dashboard for your tier's limit.
+
+### 12.2 Agmarknet / e-NAM daily mandi prices (via data.gov.in)
+- Published as a data.gov.in resource: **"Variety-wise Daily Market Prices of Commodity"**, resource ID `35985678-0d79-46b4-9ed6-6f13308a1d24` (confirm current ID in your account — resource IDs occasionally get re-issued when a dataset is refreshed/migrated).
+- **Call pattern:** <a href="https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24" style="color:#0000EE; text-decoration:underline;"><code>https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24?api-key=&lt;KEY&gt;&format=json&filters[state]=Maharashtra&filters[district]=Pune&filters[commodity]=Onion</code></a>
+- Returns min/max/modal price per market per day — this is what feeds `commodity_price_daily`.
+
+### 12.3 OpenStreetMap Overpass API (competitor POIs)
+- **No key required.** Public endpoint: <a href="https://overpass-api.de/api/interpreter" style="color:#0000EE; text-decoration:underline;"><code>https://overpass-api.de/api/interpreter</code></a>
+- **Method:** POST an Overpass QL query, e.g. shops within 3km of a point:
+  ```
+  [out:json];
+  node["shop"](around:3000,18.52,73.85);
+  out body;
+  ```
+- Free but has fair-use rate limits — self-host an Overpass instance or use a mirror if you expect heavy query volume during the demo.
+
+### 12.4 Google Places API (best point-level competitor signal)
+- **Auth:** API key from Google Cloud Console, billing account required (free monthly credit, then paid per request).
+- **Endpoint (New Places API, Nearby Search):** POST <a href="https://places.googleapis.com/v1/places:searchNearby" style="color:#0000EE; text-decoration:underline;"><code>https://places.googleapis.com/v1/places:searchNearby</code></a> with a JSON body specifying `locationRestriction` (lat/lng + radius) and `includedTypes` (e.g. `["store","grocery_store"]`), and header `X-Goog-Api-Key: <KEY>` + `X-Goog-FieldMask` to control billed fields.
+- **ToS constraint carried over from the feasibility note:** cached/stored results have strict reuse limits — store only what you're permitted to (place_id, rating, category), refresh rather than permanently archive full place data.
+
+### 12.5 India Post PIN–Village Directory (canonical village→block→district→PIN mapping)
+- **No key required.** Public endpoint: <a href="https://api.postalpincode.in/pincode/" style="color:#0000EE; text-decoration:underline;"><code>https://api.postalpincode.in/pincode/&lt;PINCODE&gt;</code></a>
+- Returns an array of post offices for that PIN, each with `Name` (often the village/locality), `Block`, `District`, `State`, `Circle`. This is your best free source for the `village_name_variants` crosswalk join key.
+- There's also a companion lookup by locality name: <a href="https://api.postalpincode.in/postoffice/" style="color:#0000EE; text-decoration:underline;"><code>https://api.postalpincode.in/postoffice/&lt;NAME&gt;</code></a> for reverse search when a user types a village name instead of a PIN.
+
+### 12.6 Sources with no live API — download/manual integration only
+| Source | Access method |
+|---|---|
+| Census 2011 Village Directory & Amenities | Bulk CSV/Excel download from Census Data Store / data.gov.in catalog — no query API, load into your own DB at build time |
+| SECC 2011 | Aggregated report downloads (state-level access restrictions apply) — no public per-household API |
+| NABARD NAFIS | Published PDF survey reports only — manually extract calibration figures, no API |
+| DAY-NRLM / state SHG portals | Varies by state; some have public dashboards with no API, others require RTI/state-government data requests — treat as manual/periodic import, not a live integration |
+| PMEGP/MUDRA/NSFDC/NBCFDC/NSKFDC scheme rules (rates, caps, tenure) | No live rules API — pull from the current official circular/PDF on the respective ministry site and store in your own versioned `scheme_rules` table; re-check before every demo since these change |
+
+### 12.7 What this means for your adapter layer
+Only §12.1–12.5 are real callable APIs. Everything in §12.6 has to be **pre-loaded into your own database** as a one-time (or periodically refreshed) ETL step — don't design your Evidence API assuming a live call exists for Census, SECC, NAFIS, or scheme rules. That's exactly the kind of gap the tiered-evidence model (§1.7) is built to expose honestly instead of papering over.
