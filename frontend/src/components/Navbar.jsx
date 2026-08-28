@@ -30,14 +30,13 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleSignIn = async () => {
-    try {
-      setLoading(true);
-      await signInWithGoogle();
-    } catch (err) {
-      console.error('Sign-in error:', err.message);
-      setLoading(false);
-    }
+  const handleSignIn = () => {
+    setLoading(true);
+    // signInWithGoogle is now synchronous — instantly sets window.location.href
+    // so the loading flash is just visual feedback before navigation
+    signInWithGoogle();
+    // Reset loading after 5s in case redirect fails
+    setTimeout(() => setLoading(false), 5000);
   };
 
   const handleSignOut = async () => {

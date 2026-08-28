@@ -4,8 +4,8 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const isConfigured =
-  supabaseUrl &&
-  supabaseKey &&
+  !!supabaseUrl &&
+  !!supabaseKey &&
   !supabaseUrl.includes('your_supabase') &&
   !supabaseKey.includes('your_supabase');
 
@@ -14,41 +14,34 @@ export const supabase = isConfigured
   : createClient('https://placeholder.supabase.co', 'placeholder-key');
 
 /**
- * Trigger Google OAuth via Supabase.
- * Returns { success: true } on redirect initiation, or { error: string } on failure.
+ * Instantly redirect to Google OAuth via Supabase.
+ * Uses direct URL — zero network call, no delay.
+ *
+ * ⚠️  SUPABASE DASHBOARD REQUIRED:
+ *   Authentication → URL Configuration:
+ *     Site URL      → http://localhost:5173          ← change from 3000!
+ *     Redirect URLs → http://localhost:5173/auth/callback
+ *
+ *   Authentication → Providers → Google:
+ *     Google Console Authorized redirect URI must include:
+ *     https://<your-project>.supabase.co/auth/v1/callback
  */
-export async function signInWithGoogle() {
+export function signInWithGoogle() {
   if (!isConfigured) {
-    return { error: 'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env' };
+    alert('⚠️ Fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env');
+    return;
   }
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  // If Supabase returns a URL manually (non-browser flow), redirect manually
-  if (data?.url) {
-    window.location.href = data.url;
-    return { success: true };
-  }
-
-  return { success: true };
+  const callback = encodeURIComponent(`${window.location.origin}/auth/callback`);
+  // Direct URL — browser navigates immediately, no async, no delay
+  window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${callback}`;
 }
 
 /** Sign out the current user */
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) console.error('Sign out error:', error.message);
+  await supabase.auth.signOut();
 }
 
-/** Returns the current session or null */
+/** Get current session or null */
 export async function getSession() {
   const { data: { session } } = await supabase.auth.getSession();
   return session;
