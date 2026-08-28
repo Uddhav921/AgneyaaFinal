@@ -1,0 +1,48 @@
+/* Top nav strip — back left, forward right */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.6rem;
+}
+
+/* Shared button base */
+.backBtn,
+.fwdBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.83rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.15s ease;
+}
+
+/* Back  */
+.backBtn {
+  color: var(--text-muted);
+}
+.backBtn:hover {
+  color: var(--leaf);
+  background: rgba(111,187,124,0.08);
+  transform: translateX(-2px);
+}
+
+/* Forward */
+.fwdBtn {
+  color: var(--gold);
+}
+.fwdBtn:hover:not(:disabled) {
+  color: var(--gold-strong);
+  background: rgba(224,178,78,0.08);
+  transform: translateX(2px);
+}
+.fwdDisabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

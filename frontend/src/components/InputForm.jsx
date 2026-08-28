@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import styles from './InputForm.module.css';
+import PageNav from './PageNav';
 
 const CATEGORIES = [
   { value: 'agriculture',   label: '🌾 Agriculture & Farming' },
@@ -16,20 +17,47 @@ const CATEGORIES = [
   { value: 'construction',  label: '🏗️ Construction & Hardware' },
 ];
 
+const CASTE_CATEGORIES = [
+  { value: 'sc',        label: 'SC — Scheduled Caste' },
+  { value: 'st',        label: 'ST — Scheduled Tribe' },
+  { value: 'obc',       label: 'OBC — Other Backward Class' },
+  { value: 'nt',        label: 'NT — Nomadic Tribe' },
+  { value: 'sbc',       label: 'SBC — Special Backward Class' },
+  { value: 'open',      label: 'Open / General' },
+  { value: 'minority',  label: 'Minority' },
+  { value: 'prefer_not', label: 'Prefer not to say' },
+];
+
+const LAND_OPTIONS = [
+  { value: 'owned',   label: '🏡 Own Land' },
+  { value: 'rented',  label: '🤝 Rented / Leased' },
+  { value: 'none',    label: '🚫 No Land' },
+];
+
 /**
  * InputForm — Step 2.
  * Collects: full_name, phone, village, block, district, business idea, own capital, category.
  */
-export default function InputForm({ onSubmit, loading }) {
+/**
+ * InputForm — Step 2b (text mode).
+ * Collects: full_name, phone, village, block, district, business idea,
+ * own capital, category, caste_category, land_owned, target_customers.
+ * Accepts initialData to pre-populate fields from voice transcript.
+ */
+export default function InputForm({ onSubmit, loading, initialData = {}, onBack }) {
+  const formRef = useRef(null);
   const [form, setForm] = useState({
-    full_name:     '',
-    phone:         '',
-    village:       '',
-    block:         '',
-    district:      '',
-    business_idea: '',
-    own_capital:   '',
-    category:      '',
+    full_name:        initialData.full_name        || '',
+    phone:            initialData.phone            || '',
+    village:          initialData.village          || '',
+    block:            initialData.block            || '',
+    district:         initialData.district         || '',
+    business_idea:    initialData.business_idea    || '',
+    own_capital:      initialData.own_capital      || '',
+    category:         initialData.category         || '',
+    caste_category:   initialData.caste_category   || '',
+    land_owned:       initialData.land_owned       || '',
+    target_customers: initialData.target_customers || '',
   });
   const [errors, setErrors] = useState({});
 
@@ -37,17 +65,20 @@ export default function InputForm({ onSubmit, loading }) {
 
   const validate = () => {
     const e = {};
-    if (!form.full_name.trim())     e.full_name     = 'Full name is required';
-    if (!form.phone.trim())         e.phone         = 'Mobile number is required';
+    if (!form.full_name.trim())           e.full_name        = 'Full name is required';
+    if (!form.phone.trim())               e.phone            = 'Mobile number is required';
     else if (!/^[6-9]\d{9}$/.test(form.phone.trim()))
-                                    e.phone         = 'Enter a valid 10-digit Indian mobile number';
-    if (!form.village.trim())       e.village       = 'Village is required';
-    if (!form.block.trim())         e.block         = 'Block is required';
-    if (!form.district.trim())      e.district      = 'District is required';
-    if (!form.business_idea.trim()) e.business_idea = 'Describe your business idea';
+                                          e.phone            = 'Enter a valid 10-digit Indian mobile number';
+    if (!form.village.trim())             e.village          = 'Village is required';
+    if (!form.block.trim())               e.block            = 'Block is required';
+    if (!form.district.trim())            e.district         = 'District is required';
+    if (!form.business_idea.trim())       e.business_idea    = 'Describe your business idea';
     if (!form.own_capital || Number(form.own_capital) <= 0)
-                                    e.own_capital   = 'Enter a valid amount';
-    if (!form.category)             e.category      = 'Select a business category';
+                                          e.own_capital      = 'Enter a valid amount';
+    if (!form.category)                   e.category         = 'Select a business category';
+    if (!form.caste_category)             e.caste_category   = 'Select your caste category';
+    if (!form.land_owned)                 e.land_owned       = 'Select land ownership';
+    if (!form.target_customers.trim())    e.target_customers = 'Describe your target customers';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -57,9 +88,17 @@ export default function InputForm({ onSubmit, loading }) {
     if (validate()) onSubmit(form);
   };
 
+  const handleForward = () => formRef.current?.requestSubmit();
+
   return (
     <div className={styles.wrap}>
       <div className={styles.card}>
+        <PageNav
+          onBack={onBack}
+          onForward={handleForward}
+          forwardLabel="Analyse"
+          forwardDisabled={loading}
+        />
 
         {/* Header */}
         <div className={styles.header}>
@@ -79,7 +118,7 @@ export default function InputForm({ onSubmit, loading }) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+        <form ref={formRef} onSubmit={handleSubmit} className={styles.form}>
 
           {/* ── Personal Details ── */}
           <div className={styles.sectionLabel}>👤 Personal Details</div>
@@ -164,7 +203,7 @@ export default function InputForm({ onSubmit, loading }) {
             {errors.own_capital && <span className={styles.errMsg}>{errors.own_capital}</span>}
           </div>
 
-          {/* ── Category ── */}
+          {/* ── Business Category ── */}
           <div className={styles.field}>
             <div className={styles.sectionLabel}>🏪 Business Category</div>
             <div className={styles.catGrid}>
@@ -180,6 +219,54 @@ export default function InputForm({ onSubmit, loading }) {
               ))}
             </div>
             {errors.category && <span className={styles.errMsg}>{errors.category}</span>}
+          </div>
+
+          {/* ── Caste Category ── */}
+          <div className={styles.field}>
+            <div className={styles.sectionLabel}>🪪 Caste / Social Category</div>
+            <div className={styles.casteGrid}>
+              {CASTE_CATEGORIES.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  className={`${styles.casteBtn} ${form.caste_category === c.value ? styles.casteSelected : ''}`}
+                  onClick={() => set('caste_category', c.value)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            {errors.caste_category && <span className={styles.errMsg}>{errors.caste_category}</span>}
+          </div>
+
+          {/* ── Land Ownership ── */}
+          <div className={styles.field}>
+            <div className={styles.sectionLabel}>🌍 Land Ownership</div>
+            <div className={styles.landRow}>
+              {LAND_OPTIONS.map((l) => (
+                <button
+                  key={l.value}
+                  type="button"
+                  className={`${styles.landBtn} ${form.land_owned === l.value ? styles.landSelected : ''}`}
+                  onClick={() => set('land_owned', l.value)}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+            {errors.land_owned && <span className={styles.errMsg}>{errors.land_owned}</span>}
+          </div>
+
+          {/* ── Target Customers ── */}
+          <div className={styles.field}>
+            <div className={styles.sectionLabel}>🎯 Target Customers</div>
+            <input
+              className={`${styles.input} ${errors.target_customers ? styles.inputErr : ''}`}
+              placeholder="e.g. Women in nearby villages, local farmers, school children…"
+              value={form.target_customers}
+              onChange={(e) => set('target_customers', e.target.value)}
+            />
+            {errors.target_customers && <span className={styles.errMsg}>{errors.target_customers}</span>}
           </div>
 
           <button type="submit" className={styles.submitBtn} disabled={loading}>

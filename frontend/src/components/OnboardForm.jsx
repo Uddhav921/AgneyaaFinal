@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import styles from './OnboardForm.module.css';
+import PageNav from './PageNav';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -16,7 +17,7 @@ const LANGUAGES = [
  * OnboardForm — Step 1 post-login.
  * Collects: preferred language + data consent.
  */
-export default function OnboardForm({ user, onComplete }) {
+export default function OnboardForm({ user, onComplete, onBack }) {
   const [language, setLanguage] = useState('en');
   const [consent,  setConsent]  = useState(false);
   const [loading,  setLoading]  = useState(false);
@@ -56,9 +57,19 @@ export default function OnboardForm({ user, onComplete }) {
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'there';
 
+  const handleForward = () => {
+    if (consent) handleSubmit({ preventDefault: () => {} });
+  };
+
   return (
     <div className={styles.wrap}>
       <div className={styles.card}>
+        <PageNav
+          onBack={onBack}
+          onForward={handleForward}
+          forwardLabel="Continue"
+          forwardDisabled={!consent || loading}
+        />
 
         {/* Header */}
         <div className={styles.header}>

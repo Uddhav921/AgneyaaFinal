@@ -209,9 +209,61 @@
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Caste category grid */
+.casteGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.casteBtn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(111,187,124,0.12);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition);
+}
+.casteBtn:hover { border-color: var(--leaf); color: var(--text); }
+.casteSelected {
+  border-color: var(--leaf);
+  background: rgba(111,187,124,0.1);
+  color: var(--leaf);
+}
+
+/* Land ownership row */
+.landRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.landBtn {
+  padding: 11px 8px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(111,187,124,0.12);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--transition);
+}
+.landBtn:hover { border-color: var(--leaf); color: var(--text); }
+.landSelected {
+  border-color: var(--gold);
+  background: rgba(224,178,78,0.1);
+  color: var(--gold);
+}
+
 /* Responsive */
 @media (max-width: 560px) {
-  .row2 { grid-template-columns: 1fr; }
-  .row3 { grid-template-columns: 1fr; }
-  .catGrid { grid-template-columns: repeat(2, 1fr); }
+  .row2     { grid-template-columns: 1fr; }
+  .row3     { grid-template-columns: 1fr; }
+  .catGrid  { grid-template-columns: repeat(2, 1fr); }
+  .casteGrid { grid-template-columns: 1fr; }
+  .landRow  { grid-template-columns: 1fr; }
 }

@@ -1,41 +1,54 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import styles from './AuthCallback.module.css';
 
 /**
- * AuthCallback — handles the redirect after Google Sign-In via Supabase.
+ * AuthCallback - handles the redirect after Google Sign-In via Supabase.
  *
- * Supabase redirects here as:
+ * Supabase redirects here with the session tokens in the URL hash:
  *   http://localhost:5173/auth/callback#access_token=...&refresh_token=...
  *
- * Steps:
- *  1. Let Supabase SDK auto-process the URL hash and establish the session
- *  2. Confirm the session exists
- *  3. Redirect to home
+ * We manually set the session from the URL hash to handle device clock skew,
+ * then redirect home.
  */
 export default function AuthCallback() {
-  const [status,  setStatus]  = useState('verifying');
+  const [status, setStatus] = useState('verifying');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     const handle = async () => {
       try {
-        // Also handle error redirects (?error=...)
+        // Handle error query params from OAuth provider
         const searchParams = new URLSearchParams(window.location.search);
         const error = searchParams.get('error');
-        if (error) throw new Error(`Google OAuth error: ${error}`);
+        const errorDesc = searchParams.get('error_description');
+        if (error) throw new Error(errorDesc || error);
 
-        // Supabase SDK automatically reads the #access_token from the URL hash
-        // and sets the session in its internal store. We just need to fetch it.
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Parse the URL hash that Supabase appends after OAuth
+        const hash = window.location.hash.slice(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
 
-        if (sessionError) throw new Error(sessionError.message);
-        if (!session) throw new Error('No session received from Supabase.');
+        if (!accessToken) {
+          // Fallback: try getSession in case Supabase already processed it
+          const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+          if (sessionErr) throw new Error(sessionErr.message);
+          if (!session) throw new Error('Sign-in failed. Please try again.');
+          setStatus('success');
+          setTimeout(() => { window.location.href = '/'; }, 900);
+          return;
+        }
 
-        // Success — redirect home
+        // Manually set the session so clock skew does not cause getSession() to return null
+        const { error: setErr } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || '',
+        });
+        if (setErr) throw new Error(setErr.message);
+
         setStatus('success');
-        setTimeout(() => { window.location.href = '/'; }, 1000);
-
+        setTimeout(() => { window.location.href = '/'; }, 900);
       } catch (err) {
         console.error('AuthCallback error:', err.message);
         setMessage(err.message);
@@ -51,20 +64,20 @@ export default function AuthCallback() {
       {status === 'verifying' && (
         <div className={styles.card}>
           <div className={styles.spinner} />
-          <p>Verifying your account…</p>
+          <p>Verifying your account...</p>
         </div>
       )}
       {status === 'success' && (
         <div className={styles.card}>
-          <span className={styles.successIcon}>✅</span>
-          <p>Signed in successfully! Redirecting…</p>
+          <span className={styles.successIcon}>&#9989;</span>
+          <p>Signed in! Redirecting...</p>
         </div>
       )}
       {status === 'error' && (
         <div className={styles.card}>
-          <span className={styles.errorIcon}>❌</span>
+          <span className={styles.errorIcon}>&#10060;</span>
           <p>Sign-in failed. {message && <small>({message})</small>}</p>
-          <a href="/" className={styles.link}>← Go back</a>
+          <a href="/" className={styles.link}>Go back</a>
         </div>
       )}
     </div>

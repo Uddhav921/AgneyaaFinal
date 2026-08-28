@@ -3,28 +3,33 @@ import './index.css';
 import { useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 
-import Navbar       from './components/Navbar';
-import Hero         from './components/Hero';
-import Onboarding   from './components/Onboarding';
-import AuthCallback from './components/AuthCallback';
-import OnboardForm  from './components/OnboardForm';
-import InputForm    from './components/InputForm';
+import Navbar              from './components/Navbar';
+import Hero                from './components/Hero';
+import Onboarding          from './components/Onboarding';
+import AuthCallback        from './components/AuthCallback';
+import OnboardForm         from './components/OnboardForm';
+import InputMethodSelect   from './components/InputMethodSelect';
+import VoiceRecorder       from './components/VoiceRecorder';
+import InputForm           from './components/InputForm';
 
 const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 /*
   App state machine:
-  'landing'    → public home (not logged in)
-  'onboarding' → Step 1: language + consent  (logged in, first time)
-  'inputs'     → Step 2: location + business (logged in, onboarded)
-  'callback'   → /auth/callback route
+  'landing'      → public home (not logged in)
+  'onboarding'   → Step 1: language + consent  (logged in, first time)
+  'inputMethod'  → Step 2a: choose Text or Voice input
+  'voiceInput'   → Step 2b: voice recording page
+  'inputs'       → Step 2c: text form (pre-filled if from voice)
+  'callback'     → /auth/callback route
 */
 
 export default function App() {
   const { user, session, loading } = useAuth();
-  const [appState,     setAppState]     = useState('landing');
-  const [checkingOnboard, setCheckingOnboard] = useState(false);
-  const [submitLoading,   setSubmitLoading]   = useState(false);
+  const [appState,          setAppState]          = useState('landing');
+  const [checkingOnboard,   setCheckingOnboard]   = useState(false);
+  const [submitLoading,     setSubmitLoading]     = useState(false);
+  const [voiceInitialData,  setVoiceInitialData]  = useState({});
 
   // Handle /auth/callback route
   const isCallback = window.location.pathname === '/auth/callback';
@@ -44,7 +49,8 @@ export default function App() {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         const data = await res.json();
-        setAppState(data.onboarded ? 'inputs' : 'onboarding');
+        // After onboarding go to method selection, not directly to inputs
+        setAppState(data.onboarded ? 'inputMethod' : 'onboarding');
       } catch {
         setAppState('onboarding'); // default to onboarding on error
       } finally {
@@ -55,7 +61,7 @@ export default function App() {
     checkOnboard();
   }, [user, session]);
 
-  // Step 1 complete → save profile → move to inputs
+  // Step 1 complete → save profile → move to input method selection
   const handleOnboardComplete = async ({ language, consent }) => {
     try {
       await fetch(`${API}/auth/profile`, {
@@ -67,6 +73,22 @@ export default function App() {
         body: JSON.stringify({ language, consent }),
       });
     } catch { /* handled in OnboardForm */ }
+    setAppState('inputMethod');
+  };
+
+  // User picked text → go to form
+  const handleMethodSelect = (method) => {
+    if (method === 'text') {
+      setVoiceInitialData({});
+      setAppState('inputs');
+    } else {
+      setAppState('voiceInput');
+    }
+  };
+
+  // Voice done → pre-fill business_idea and go to form
+  const handleVoiceTranscript = (transcript) => {
+    setVoiceInitialData({ business_idea: transcript });
     setAppState('inputs');
   };
 
@@ -106,7 +128,28 @@ export default function App() {
     return (
       <>
         <Navbar />
-        <OnboardForm user={user} onComplete={handleOnboardComplete} />
+        <OnboardForm user={user} onComplete={handleOnboardComplete} onBack={() => setAppState('landing')} />
+      </>
+    );
+  }
+
+  if (appState === 'inputMethod') {
+    return (
+      <>
+        <Navbar />
+        <InputMethodSelect onSelect={handleMethodSelect} onBack={() => setAppState('onboarding')} />
+      </>
+    );
+  }
+
+  if (appState === 'voiceInput') {
+    return (
+      <>
+        <Navbar />
+        <VoiceRecorder
+          onTranscriptReady={handleVoiceTranscript}
+          onBack={() => setAppState('inputMethod')}
+        />
       </>
     );
   }
@@ -115,7 +158,12 @@ export default function App() {
     return (
       <>
         <Navbar />
-        <InputForm onSubmit={handleInputSubmit} loading={submitLoading} />
+        <InputForm
+          onSubmit={handleInputSubmit}
+          loading={submitLoading}
+          initialData={voiceInitialData}
+          onBack={() => setAppState('inputMethod')}
+        />
       </>
     );
   }
