@@ -1,0 +1,39 @@
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  --bg:          #0E1912;
+  --bg-soft:     #122015;
+  --surface:     #152417;
+  --surface-2:   #1B2E1E;
+
+  --text:        #EEEBE1;
+  --text-muted:  #A9BAAB;
+
+  --gold:        #E0B24E;
+  --gold-strong: #F0C15C;
+
+  --leaf:        #6FBB7C;
+  --danger:      #E2766A;
+  --warn:        #E3A85C;
+
+  --radius:      12px;
+  --transition:  0.25s ease;
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a { text-decoration: none; }
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 999px; }

@@ -1,0 +1,149 @@
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 100vh;
+  padding: 6rem 1.5rem 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Radial glow backdrop */
+.hero::before {
+  content: '';
+  position: absolute;
+  width: 620px; height: 620px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(111,187,124,0.07) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -55%);
+  pointer-events: none;
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(111, 187, 124, 0.1);
+  border: 1px solid rgba(111, 187, 124, 0.25);
+  color: var(--leaf);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 1.8rem;
+}
+
+.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--leaf);
+  animation: blink 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* Heading */
+.heading {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(2.4rem, 6vw, 4.8rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin-bottom: 1.2rem;
+}
+
+.highlight {
+  background: linear-gradient(135deg, var(--gold-strong) 0%, var(--leaf) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtext */
+.sub {
+  max-width: 560px;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  margin-bottom: 2.5rem;
+}
+
+/* Pipeline */
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+.chip {
+  padding: 8px 18px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid rgba(111, 187, 124, 0.15);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: border-color var(--transition), color var(--transition);
+}
+
+.chip:hover {
+  border-color: var(--leaf);
+  color: var(--text);
+}
+
+.chip.gold {
+  border-color: rgba(224, 178, 78, 0.3);
+  color: var(--gold);
+}
+
+.arrow {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+/* CTA */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 34px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-strong));
+  color: #0E1912;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: box-shadow var(--transition), transform var(--transition);
+  letter-spacing: 0.3px;
+}
+
+.cta:hover {
+  box-shadow: 0 8px 32px rgba(224, 178, 78, 0.4);
+  transform: translateY(-2px);
+}
+
+.cta:active {
+  transform: translateY(0);
+}
+
+/* Animations */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .pipeline { gap: 6px; }
+  .chip { font-size: 0.75rem; padding: 6px 12px; }
+}
