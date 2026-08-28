@@ -1,16 +1,19 @@
 import os
 import jwt
+import base64
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 from app.database import get_db
 
-load_dotenv()
+# Load .env using absolute path — avoids CWD issues with dotenv
+_ENV = dotenv_values(Path(__file__).resolve().parents[2] / ".env")
 
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+SUPABASE_JWT_SECRET: str = _ENV.get("SUPABASE_JWT_SECRET", "")
 
 router = APIRouter(prefix="/auth", tags=["Auth — Supabase Google Login"])
 security = HTTPBearer()
@@ -35,9 +38,10 @@ class ProfileUpdate(BaseModel):
 
 def verify_supabase_token(token: str) -> dict:
     """
-    Decodes and verifies a Supabase JWT token.
-    Returns the payload if valid, raises HTTPException otherwise.
+    Verifies a Supabase JWT token using the raw JWT secret string.
     """
+    if not SUPABASE_JWT_SECRET:
+        raise HTTPException(status_code=500, detail="SUPABASE_JWT_SECRET not configured in backend/.env")
     try:
         payload = jwt.decode(
             token,
@@ -47,7 +51,7 @@ def verify_supabase_token(token: str) -> dict:
         )
         return payload
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token has expired")
+        raise HTTPException(status_code=401, detail="Token has expired — please sign in again")
     except jwt.InvalidTokenError as e:
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
@@ -91,6 +95,49 @@ def get_me(current_user: dict = Depends(get_current_user)):
         "id":    current_user.get("sub"),
         "email": current_user.get("email"),
         "role":  current_user.get("role", "authenticated"),
+    }
+
+
+@router.post("/upsert-user", summary="Auto-save Google user to DB on login")
+def upsert_user(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Called right after Google Sign-In via Supabase.
+    Inserts user into the users table if not exists,
+    or updates email/full_name if already present.
+
+    Table schema: id | supabase_id | email | full_name | phone | role | created_at | updated_at
+    """
+    supabase_id = current_user.get("sub")
+    email       = current_user.get("email", "")
+    meta        = current_user.get("user_metadata", {})
+    full_name   = meta.get("full_name") or meta.get("name") or email.split("@")[0]
+
+    try:
+        db.execute(text("""
+            INSERT INTO users (supabase_id, email, full_name, role)
+            VALUES (:sid, :email, :full_name, 'user')
+            ON DUPLICATE KEY UPDATE
+                email     = VALUES(email),
+                full_name = VALUES(full_name),
+                updated_at = NOW()
+        """), {
+            "sid":       supabase_id,
+            "email":     email,
+            "full_name": full_name,
+        })
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"DB error: {str(e)}")
+
+    return {
+        "status":      "saved",
+        "supabase_id": supabase_id,
+        "email":       email,
+        "full_name":   full_name,
     }
 
 

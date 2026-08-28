@@ -30,10 +30,12 @@
 .successIcon { font-size: 2rem; }
 .errorIcon   { font-size: 2rem; }
 
-.card a {
+.card a, .link {
   color: var(--gold);
   text-decoration: underline;
   cursor: pointer;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
 }
 
 @keyframes spin {

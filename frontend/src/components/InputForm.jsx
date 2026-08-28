@@ -18,10 +18,12 @@ const CATEGORIES = [
 
 /**
  * InputForm — Step 2.
- * Collects: village, block, district, business idea, own capital, category.
+ * Collects: full_name, phone, village, block, district, business idea, own capital, category.
  */
 export default function InputForm({ onSubmit, loading }) {
   const [form, setForm] = useState({
+    full_name:     '',
+    phone:         '',
     village:       '',
     block:         '',
     district:      '',
@@ -35,6 +37,10 @@ export default function InputForm({ onSubmit, loading }) {
 
   const validate = () => {
     const e = {};
+    if (!form.full_name.trim())     e.full_name     = 'Full name is required';
+    if (!form.phone.trim())         e.phone         = 'Mobile number is required';
+    else if (!/^[6-9]\d{9}$/.test(form.phone.trim()))
+                                    e.phone         = 'Enter a valid 10-digit Indian mobile number';
     if (!form.village.trim())       e.village       = 'Village is required';
     if (!form.block.trim())         e.block         = 'Block is required';
     if (!form.district.trim())      e.district      = 'District is required';
@@ -75,7 +81,40 @@ export default function InputForm({ onSubmit, loading }) {
 
         <form onSubmit={handleSubmit} className={styles.form}>
 
-          {/* Location */}
+          {/* ── Personal Details ── */}
+          <div className={styles.sectionLabel}>👤 Personal Details</div>
+          <div className={styles.row2}>
+
+            {/* Full Name */}
+            <div className={styles.field}>
+              <input
+                className={`${styles.input} ${errors.full_name ? styles.inputErr : ''}`}
+                placeholder="Full Name"
+                value={form.full_name}
+                onChange={(e) => set('full_name', e.target.value)}
+              />
+              {errors.full_name && <span className={styles.errMsg}>{errors.full_name}</span>}
+            </div>
+
+            {/* Mobile Number */}
+            <div className={styles.field}>
+              <div className={styles.inputPrefix}>
+                <span className={styles.prefix}>+91</span>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  className={`${styles.input} ${styles.inputWithPrefix91} ${errors.phone ? styles.inputErr : ''}`}
+                  placeholder="Mobile Number"
+                  value={form.phone}
+                  onChange={(e) => set('phone', e.target.value.replace(/\D/g, ''))}
+                />
+              </div>
+              {errors.phone && <span className={styles.errMsg}>{errors.phone}</span>}
+            </div>
+
+          </div>
+
+          {/* ── Location ── */}
           <div className={styles.sectionLabel}>📍 Location</div>
           <div className={styles.row3}>
             {[
@@ -95,7 +134,7 @@ export default function InputForm({ onSubmit, loading }) {
             ))}
           </div>
 
-          {/* Business Idea */}
+          {/* ── Business Idea ── */}
           <div className={styles.field}>
             <div className={styles.sectionLabel}>💡 Business Idea</div>
             <textarea
@@ -108,7 +147,7 @@ export default function InputForm({ onSubmit, loading }) {
             {errors.business_idea && <span className={styles.errMsg}>{errors.business_idea}</span>}
           </div>
 
-          {/* Capital */}
+          {/* ── Capital ── */}
           <div className={styles.field}>
             <div className={styles.sectionLabel}>💰 Available Margin Money (₹)</div>
             <div className={styles.inputPrefix}>
@@ -125,7 +164,7 @@ export default function InputForm({ onSubmit, loading }) {
             {errors.own_capital && <span className={styles.errMsg}>{errors.own_capital}</span>}
           </div>
 
-          {/* Category */}
+          {/* ── Category ── */}
           <div className={styles.field}>
             <div className={styles.sectionLabel}>🏪 Business Category</div>
             <div className={styles.catGrid}>
