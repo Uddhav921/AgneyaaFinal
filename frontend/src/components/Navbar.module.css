@@ -36,8 +36,8 @@
   letter-spacing: 0.5px;
 }
 
-/* Login Button */
-.loginBtn {
+/* Sign In Button */
+.signInBtn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -54,13 +54,13 @@
   transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
 }
 
-.loginBtn:hover {
+.signInBtn:hover {
   background: rgba(224, 178, 78, 0.12);
   box-shadow: 0 0 18px rgba(224, 178, 78, 0.25);
   transform: translateY(-1px);
 }
 
-.loginBtn:active {
+.signInBtn:active {
   transform: translateY(0);
 }
 
