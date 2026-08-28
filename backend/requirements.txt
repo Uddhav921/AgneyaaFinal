@@ -6,8 +6,10 @@ cryptography
 python-dotenv
 pydantic
 pydantic-settings
-supabase
 PyJWT
+google-auth
+google-auth-httplib2
+requests
 google-generativeai
 httpx
 python-multipart

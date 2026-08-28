@@ -2,54 +2,48 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import styles from './AuthCallback.module.css';
 
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-
 /**
  * AuthCallback — handles the redirect after Google Sign-In via Supabase.
- * 1. Gets the session from Supabase (auto-parsed from URL hash)
- * 2. Calls /auth/upsert-user to save email + name to MySQL users table
- * 3. Redirects to home page
+ *
+ * Supabase redirects here as:
+ *   http://localhost:5173/auth/callback#access_token=...&refresh_token=...
+ *
+ * Steps:
+ *  1. Let Supabase SDK auto-process the URL hash and establish the session
+ *  2. Confirm the session exists
+ *  3. Redirect to home
  */
 export default function AuthCallback() {
-  const [status,  setStatus]  = useState('verifying'); // verifying | saving | success | error
+  const [status,  setStatus]  = useState('verifying');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const handleCallback = async () => {
+    const handle = async () => {
       try {
-        // Step 1: Get session (Supabase auto-processes the URL hash)
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw new Error(error.message);
-        if (!session) throw new Error('No session found after login.');
+        // Also handle error redirects (?error=...)
+        const searchParams = new URLSearchParams(window.location.search);
+        const error = searchParams.get('error');
+        if (error) throw new Error(`Google OAuth error: ${error}`);
 
-        // Step 2: Upsert user into MySQL users table
-        setStatus('saving');
-        const res = await fetch(`${API}/auth/upsert-user`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+        // Supabase SDK automatically reads the #access_token from the URL hash
+        // and sets the session in its internal store. We just need to fetch it.
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          console.warn('User upsert failed:', err.detail || res.status);
-          // Don't block — still proceed to app
-        }
+        if (sessionError) throw new Error(sessionError.message);
+        if (!session) throw new Error('No session received from Supabase.');
 
-        // Step 3: Redirect to home
+        // Success — redirect home
         setStatus('success');
-        setTimeout(() => { window.location.href = '/'; }, 1200);
+        setTimeout(() => { window.location.href = '/'; }, 1000);
 
       } catch (err) {
-        console.error('Auth callback error:', err.message);
+        console.error('AuthCallback error:', err.message);
         setMessage(err.message);
         setStatus('error');
       }
     };
 
-    handleCallback();
+    handle();
   }, []);
 
   return (
@@ -58,12 +52,6 @@ export default function AuthCallback() {
         <div className={styles.card}>
           <div className={styles.spinner} />
           <p>Verifying your account…</p>
-        </div>
-      )}
-      {status === 'saving' && (
-        <div className={styles.card}>
-          <div className={styles.spinner} />
-          <p>Setting up your profile…</p>
         </div>
       )}
       {status === 'success' && (

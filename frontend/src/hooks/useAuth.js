@@ -3,7 +3,9 @@ import { supabase } from '../lib/supabase';
 
 /**
  * useAuth — returns { user, session, loading }
- * and listens for auth state changes across the app.
+ *
+ * Reads the active Supabase session (set by Supabase after Google OAuth).
+ * Listens for auth state changes across tabs.
  */
 export function useAuth() {
   const [user,    setUser]    = useState(null);
@@ -11,14 +13,14 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
+    // Get current session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Subscribe to changes
+    // Subscribe to auth state changes (login / logout / token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
