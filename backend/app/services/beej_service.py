@@ -537,3 +537,129 @@ async def run_beej_analysis(data: dict, db) -> dict:
         pass
 
     return result
+
+
+# ── Business Report Generator ─────────────────────────────────────
+
+async def create_business_report(
+    business_context: dict,
+    conversation_history: list[dict],
+    dataset_data: dict,
+) -> str:
+    """
+    Analyzes the full conversation, extracts key insights, and generates
+    a structured Markdown Business Feasibility Report.
+    Does NOT dump chat history — only synthesized knowledge.
+    Uses the LATEST confirmed information if the user updated any details.
+    """
+    from datetime import date
+    system_prompt = build_system_prompt(business_context, dataset_data)
+
+    # Build conversation contents
+    contents = []
+    for msg in conversation_history:
+        role = "user" if msg["role"] == "user" else "model"
+        contents.append(
+            genai_types.Content(
+                role=role,
+                parts=[genai_types.Part(text=msg["content"])],
+            )
+        )
+
+    today = date.today().strftime("%d %B %Y")
+    bc    = business_context
+
+    report_request = f"""Based on our entire conversation so far, generate a professional **Business Feasibility Report** for this entrepreneur.
+
+STRICT INSTRUCTIONS:
+- Extract and synthesize ONLY the important information from our conversation: confirmed business requirements, key decisions made, market analysis findings, financial data discussed, government schemes identified, risk factors, and recommendations
+- If the user provided UPDATED information at any point in the conversation, use only the LATEST confirmed version — discard older/contradicted data
+- Do NOT copy-paste or quote chat messages directly
+- Write as a formal, structured report (not a conversation)
+- Be specific with numbers where available; label all data sources
+
+FORMAT the report EXACTLY as follows (use proper Markdown):
+
+# 🌱 Business Feasibility Report
+**Prepared by Beej AI · Agneyaa Platform**
+*{today}*
+
+---
+
+## 📋 Executive Summary
+[2–3 sentences: what the business is, overall feasibility verdict, top opportunity or risk]
+
+---
+
+## 🏢 Business Profile
+| Field | Details |
+|---|---|
+| **Entrepreneur** | {bc.get('full_name', 'N/A')} |
+| **Business Idea** | {bc.get('business_idea', 'N/A')} |
+| **Category** | {bc.get('category', 'N/A')} |
+| **Location** | {bc.get('village', '')}, {bc.get('block', '')}, {bc.get('district', '')} |
+| **Available Capital** | ₹{bc.get('own_capital', 'N/A')} |
+| **Land Ownership** | {bc.get('land_owned', 'N/A')} |
+| **Caste Category** | {bc.get('caste_category', 'N/A')} |
+| **Target Customers** | {bc.get('target_customers', 'N/A')} |
+
+---
+
+## 📊 Market Analysis
+[Synthesize all market insights from the conversation. Label each point:]
+- 🟢 **API Data**: [facts from OSM/Agmarknet/India Post]
+- 🔵 **User Data**: [facts the user confirmed]
+- 🟡 **Estimated**: [Gemini-reasoned estimates]
+
+---
+
+## 💰 Financial Overview
+[Synthesize financial data discussed: capital, loan need, EMI estimates, working capital, break-even if discussed]
+
+---
+
+## 🏛️ Government Schemes
+[Top 1–3 matched schemes with: scheme name, key benefit, why this user qualifies]
+
+---
+
+## ⚠️ Risk Assessment
+| Risk Factor | Severity | Suggested Mitigation |
+|---|---|---|
+
+---
+
+## ✅ Action Plan
+List the concrete next steps in order:
+1. [First immediate action]
+2. ...
+
+---
+
+## 🎯 Final Recommendation
+**Verdict**: [GO / CONDITIONAL GO / NEEDS MORE STUDY]
+
+[2–3 sentences with the key reasoning for the verdict]
+
+---
+*Data Sources: 🟢 API (India Post, OSM Overpass, Agmarknet) · 🔵 User Provided · 🟡 Gemini Estimated*"""
+
+    contents.append(
+        genai_types.Content(
+            role="user",
+            parts=[genai_types.Part(text=report_request)],
+        )
+    )
+
+    response = await asyncio.to_thread(
+        lambda: client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=contents,
+            config=genai_types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.3,
+                max_output_tokens=2500,
+            ),
+        )
+    )
+    return response.text

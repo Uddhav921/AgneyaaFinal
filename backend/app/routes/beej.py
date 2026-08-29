@@ -18,6 +18,7 @@ from app.services.beej_service import (
     stream_initial_analysis,
     stream_beej_chat,
     run_beej_analysis,
+    create_business_report,
 )
 
 router = APIRouter(prefix="/beej", tags=["Beej — Business Chat (Gemini)"])
@@ -54,6 +55,12 @@ class ChatRequest(BaseModel):
 
 class StartRequest(BaseModel):
     business_context: BusinessContext
+
+
+class ReportRequest(BaseModel):
+    business_context:     BusinessContext
+    conversation_history: list[ChatMessage] = []
+    dataset_data:         dict = {}
 
 
 class BeejRequest(BaseModel):
@@ -187,3 +194,27 @@ def get_analysis(business_id: int, db: Session = Depends(get_db)):
     if not ev:
         raise HTTPException(status_code=404, detail="No analysis found for this business")
     return ev
+
+
+@router.post(
+    "/report",
+    summary="Generate a structured Business Feasibility Report from conversation",
+)
+async def generate_report(payload: ReportRequest):
+    """
+    Analyzes the full conversation and generates a Markdown-formatted
+    Business Feasibility Report — synthesized insights only, no raw chat dump.
+    Uses latest confirmed information if user updated any details mid-conversation.
+    """
+    bc      = payload.business_context.dict()
+    history = [m.dict() for m in payload.conversation_history]
+    dd      = payload.dataset_data
+
+    if not history:
+        raise HTTPException(status_code=400, detail="Conversation history is required to generate a report")
+
+    try:
+        report_text = await create_business_report(bc, history, dd)
+        return {"report": report_text, "status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")

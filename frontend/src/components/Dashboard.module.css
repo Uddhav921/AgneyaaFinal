@@ -1,0 +1,350 @@
+/* ══════════════════════════════════════════════════════
+   Dashboard — Hub page: access all 4 modules
+   ══════════════════════════════════════════════════════ */
+
+.wrap {
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.wrap::-webkit-scrollbar { width: 4px; }
+.wrap::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 99px; }
+
+/* ── Welcome Banner ──────────────────────────────────── */
+.banner {
+  background: linear-gradient(135deg, #0A1E10 0%, #0F2815 50%, #0A1A0E 100%);
+  border-bottom: 1px solid rgba(111,187,124,0.12);
+  padding: 2rem 2.5rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(111,187,124,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.bannerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.welcomeText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.welcomeHi {
+  font-size: 0.75rem;
+  color: var(--leaf);
+  font-weight: 600;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.welcomeName {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.15;
+}
+.welcomeBiz {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.welcomeBiz strong { color: var(--gold); }
+
+.editBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(111,187,124,0.08);
+  border: 1px solid rgba(111,187,124,0.2);
+  color: var(--leaf);
+  padding: 0.5rem 0.9rem;
+  border-radius: 9px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.editBtn:hover { background: rgba(111,187,124,0.15); border-color: rgba(111,187,124,0.35); }
+
+/* Progress bar */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.progressLabel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.progressBar {
+  flex: 1;
+  height: 5px;
+  background: rgba(111,187,124,0.1);
+  border-radius: 99px;
+  overflow: hidden;
+  max-width: 260px;
+}
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--leaf), #52a869);
+  border-radius: 99px;
+  transition: width 0.5s ease;
+}
+.progressPct {
+  font-size: 0.72rem;
+  color: var(--leaf);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── Info chips row ──────────────────────────────────── */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.85rem 2.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid rgba(111,187,124,0.08);
+  flex-shrink: 0;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.71rem;
+  color: var(--text-muted);
+  background: var(--bg-soft);
+  border: 1px solid rgba(111,187,124,0.1);
+  border-radius: 99px;
+  padding: 0.28rem 0.7rem;
+}
+.chip span:first-child { font-size: 0.8rem; }
+
+/* ── Module Cards Grid ───────────────────────────────── */
+.body {
+  flex: 1;
+  padding: 1.75rem 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+}
+
+.sectionTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  opacity: 0.65;
+  margin-bottom: -0.5rem;
+}
+
+.moduleGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 1100px) { .moduleGrid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .moduleGrid { grid-template-columns: 1fr; } }
+
+/* ── Module Card ─────────────────────────────────────── */
+.moduleCard {
+  background: var(--surface);
+  border: 1px solid rgba(111,187,124,0.1);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
+.moduleCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--card-accent, rgba(111,187,124,0.3));
+  border-radius: 16px 16px 0 0;
+  transition: background 0.25s;
+}
+.moduleCard:hover:not(.locked) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  border-color: rgba(111,187,124,0.25);
+}
+.moduleCard.active { border-color: rgba(111,187,124,0.3); }
+.moduleCard.done   { border-color: rgba(111,187,124,0.2); }
+.moduleCard.locked { cursor: not-allowed; opacity: 0.45; }
+
+.moduleCard.m1 { --card-accent: var(--leaf); }
+.moduleCard.m2 { --card-accent: #81b4f5; }
+.moduleCard.m3 { --card-accent: var(--gold); }
+.moduleCard.m4 { --card-accent: #E27B9F; }
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.cardIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+.moduleCard.m1 .cardIcon { background: rgba(111,187,124,0.12); }
+.moduleCard.m2 .cardIcon { background: rgba(129,180,245,0.12); }
+.moduleCard.m3 .cardIcon { background: rgba(224,178,78,0.12); }
+.moduleCard.m4 .cardIcon { background: rgba(226,123,159,0.12); }
+
+.cardStatus {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 99px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.statusBadge.pending  { background: rgba(111,187,124,0.1);  color: var(--leaf);   border: 1px solid rgba(111,187,124,0.2); }
+.statusBadge.active   { background: rgba(224,178,78,0.12);  color: var(--gold);   border: 1px solid rgba(224,178,78,0.25); animation: badgePulse 2s infinite; }
+.statusBadge.done     { background: rgba(111,187,124,0.15); color: var(--leaf);   border: 1px solid rgba(111,187,124,0.3); }
+.statusBadge.locked   { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.08); }
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224,178,78,0.3); }
+  50%       { box-shadow: 0 0 0 4px rgba(224,178,78,0); }
+}
+
+.cardModTag {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cardTitle {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.cardDesc {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.cardFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+.cardFeature {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.71rem;
+  color: var(--text-muted);
+}
+.cardFeature::before {
+  content: '•';
+  color: var(--leaf);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.cardAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+.cardBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+.moduleCard.m1 .cardBtn { background: rgba(111,187,124,0.15); color: var(--leaf); }
+.moduleCard.m2 .cardBtn { background: rgba(129,180,245,0.12); color: #81b4f5; }
+.moduleCard.m3 .cardBtn { background: rgba(224,178,78,0.12);  color: var(--gold); }
+.moduleCard.m4 .cardBtn { background: rgba(226,123,159,0.12); color: #E27B9F; }
+.cardBtn:hover { filter: brightness(1.2); }
+.moduleCard.locked .cardBtn { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Info cards row ──────────────────────────────────── */
+.infoRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 900px) { .infoRow { grid-template-columns: 1fr; } }
+
+.infoCard {
+  background: var(--surface);
+  border: 1px solid rgba(111,187,124,0.08);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.infoCardTitle {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.infoCardValue {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.infoCardSub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}

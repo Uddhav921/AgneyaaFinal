@@ -11,7 +11,7 @@ const GoogleIcon = () => (
   </svg>
 );
 
-export default function Navbar() {
+export default function Navbar({ onProfileClick }) {
   const [user, setUser]       = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -58,14 +58,20 @@ export default function Navbar() {
       {/* Auth area — top right */}
       {user ? (
         <div className={styles.userArea}>
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={userName} className={styles.avatar} />
-          ) : (
-            <div className={styles.avatarFallback}>
-              {userName?.[0]?.toUpperCase()}
-            </div>
-          )}
-          <span className={styles.userName}>{userName}</span>
+          <div
+            style={{ cursor: onProfileClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            onClick={onProfileClick}
+            title={onProfileClick ? 'Go back to your active analysis' : ''}
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={userName} className={styles.avatar} />
+            ) : (
+              <div className={styles.avatarFallback}>
+                {userName?.[0]?.toUpperCase()}
+              </div>
+            )}
+            <span className={styles.userName}>{userName}</span>
+          </div>
           <button className={styles.signOutBtn} onClick={handleSignOut} aria-label="Sign out">
             Sign Out
           </button>

@@ -45,7 +45,7 @@ Agneyaa is a hyper-local AI-powered platform built for marginalized rural entrep
 |---|---|
 | React 18 + Vite | UI framework |
 | CSS Modules | Component-scoped styling |
-| Supabase JS SDK | Google OAuth authentication |
+| Custom Auth | Google OAuth authentication |
 | Outfit / Inter (Google Fonts) | Typography |
 
 ### Backend
@@ -53,7 +53,7 @@ Agneyaa is a hyper-local AI-powered platform built for marginalized rural entrep
 |---|---|
 | FastAPI (Python) | REST API server |
 | SQLAlchemy + PyMySQL | ORM + MySQL connector |
-| Supabase (Google Auth) | Authentication provider |
+| Custom Google Auth | Authentication provider |
 | PyJWT | JWT token verification |
 | Google Gemini AI | AI market analysis + feasibility |
 | python-dotenv | Environment config |
@@ -62,7 +62,6 @@ Agneyaa is a hyper-local AI-powered platform built for marginalized rural entrep
 | Technology | Purpose |
 |---|---|
 | MySQL (XAMPP) | Primary database |
-| Supabase | Auth user management |
 
 ---
 
@@ -98,8 +97,8 @@ Agneyaa is a hyper-local AI-powered platform built for marginalized rural entrep
        ▲
        │ Google OAuth
 ┌──────────────┐
-│   Supabase   │
-│ (Auth only)  │
+│Google Server │
+│ (OAuth 2.0)  │
 └──────────────┘
 ```
 
@@ -124,12 +123,19 @@ AgneyaaF/
 │   │   │   ├── AuthCallback.module.css
 │   │   │   ├── OnboardForm.jsx        # Step 1: Language + Consent
 │   │   │   ├── OnboardForm.module.css
+│   │   │   ├── InputMethodSelect.jsx  # Select Text or Voice Input
+│   │   │   ├── InputMethodSelect.module.css
+│   │   │   ├── VoiceRecorder.jsx      # Voice input component
+│   │   │   ├── VoiceRecorder.module.css
 │   │   │   ├── InputForm.jsx          # Step 2: Name, Phone, Location, Business
-│   │   │   └── InputForm.module.css
+│   │   │   ├── InputForm.module.css
+│   │   │   ├── BeejChat.jsx           # Conversational AI interface
+│   │   │   └── BeejChat.module.css
 │   │   ├── hooks/
-│   │   │   └── useAuth.js             # Supabase auth state hook
+│   │   │   ├── useAuth.js             # Auth state hook
+│   │   │   └── useSessionStore.js     # Chat session local storage hook
 │   │   ├── lib/
-│   │   │   └── supabase.js            # Supabase client + signInWithGoogle
+│   │   │   └── auth.js                # Custom auth helpers
 │   │   ├── App.jsx                    # Main app state machine
 │   │   ├── index.css                  # Global styles + CSS variables
 │   │   └── main.jsx                   # React entry point
@@ -149,19 +155,19 @@ AgneyaaF/
 │   │   │   ├── evidence.py            # Market evidence model
 │   │   │   └── document.py            # Document checklist model
 │   │   ├── routes/
-│   │   │   ├── auth.py                # /auth/* — JWT verify, upsert user, profile
-│   │   │   ├── beej.py                # /beej/* — Market analysis (AI)
+│   │   │   ├── auth.py                # /auth/* — Custom Google OAuth, JWT verify
+│   │   │   ├── beej.py                # /beej/* — Market analysis (AI Chat/SSE)
 │   │   │   ├── mool.py                # /mool/* — Financial calculation
 │   │   │   ├── shakha.py              # /shakha/* — Scheme matching
 │   │   │   └── chhaya.py              # /chhaya/* — Feasibility report
 │   │   ├── services/
-│   │   │   ├── beej_service.py        # Gemini AI market analysis logic
+│   │   │   ├── beej_service.py        # Gemini AI market analysis + Data APIs
 │   │   │   ├── mool_service.py        # Finance calculation logic
 │   │   │   ├── shakha_service.py      # Scheme matching logic
 │   │   │   └── chhaya_service.py      # Report generation logic
 │   │   └── data/
 │   │       └── seed_data.py           # Initial scheme/data seeding
-│   ├── .env                           # Backend secrets (DB, Supabase, Gemini)
+│   ├── .env                           # Backend secrets (DB, Google, Gemini)
 │   ├── .env.example                   # Template for .env
 │   ├── .gitignore
 │   └── requirements.txt
@@ -177,27 +183,25 @@ AgneyaaF/
 1. LANDING PAGE
    └─ User sees Hero + "How it Works" + Sign In button
 
-2. GOOGLE SIGN IN (Supabase OAuth)
-   └─ Click Sign In → redirect to Google → back to /auth/callback
-   └─ AuthCallback saves email + full_name to MySQL users table
+2. GOOGLE SIGN IN (Custom OAuth)
+   └─ Click Sign In → redirect to backend → Google → back to /auth/callback
+   └─ Backend issues JWT, frontend AuthCallback saves to localStorage
 
 3. STEP 1 — ONBOARDING (OnboardForm)
    └─ Select language (8 Indian languages)
    └─ Accept data consent
    └─ Saved via POST /api/v1/auth/profile
 
-4. STEP 2 — BUSINESS INPUTS (InputForm)
-   └─ Full Name + Mobile Number
-   └─ Location: Village + Block + District
-   └─ Business Idea (text description)
-   └─ Available Margin Money (₹)
-   └─ Business Category (12 categories)
+4. STEP 2 — BUSINESS INPUTS
+   ├─ InputMethodSelect: Choose Voice or Text
+   ├─ VoiceRecorder (Optional): Transcribe idea
+   └─ InputForm: Name, Phone, Location, Business Idea, Margin Money, Category
 
-5. AI PIPELINE (coming next)
-   ├─ BEEJ  → Market Analysis (Gemini AI)
+5. AI PIPELINE
+   ├─ BEEJ  → Interactive conversational market analysis (Gemini AI + Live Data)
    ├─ MOOL  → Financial Calculation
    ├─ SHAKHA → Government Scheme Matching
-   └─ CHHAYA → Final Feasibility Report
+   └─ CHHAYA → Final Feasibility Report Generation
 ```
 
 ---
@@ -206,10 +210,13 @@ AgneyaaF/
 
 ### State Machine (`App.jsx`)
 ```
-'landing'    → Public home page (not logged in)
-'onboarding' → Step 1: Language + Consent (first login)
-'inputs'     → Step 2: Business details form
-'callback'   → /auth/callback route (OAuth return)
+'landing'      → Public home page (not logged in)
+'onboarding'   → Step 1: Language + Consent (first login)
+'inputMethod'  → Step 2: Choose Text or Voice input
+'voiceInput'   → Step 2: Voice recording page
+'inputs'       → Step 2: Business details form (pre-filled if voice used)
+'chat'         → Step 3: Beej conversational AI chat
+'callback'     → /auth/callback route (OAuth return)
 ```
 
 ### Components
@@ -219,15 +226,16 @@ AgneyaaF/
 | `Navbar` | Logo + Google Sign In button / user avatar when logged in |
 | `Hero` | Landing page headline and CTA |
 | `Onboarding` | "How it Works" steps section |
-| `AuthCallback` | Handles Supabase OAuth redirect, saves user to DB |
+| `AuthCallback` | Handles custom OAuth redirect, saves token |
 | `OnboardForm` | Language selector + consent checkbox |
+| `InputMethodSelect` | Choose Text or Voice input method |
+| `VoiceRecorder` | Voice input for business idea transcription |
 | `InputForm` | Full business input form with validation |
+| `BeejChat` | Streaming conversational UI with AI |
 
-### Custom Hook — `useAuth.js`
-```js
-const { user, session, loading } = useAuth();
-// Reactively tracks Supabase session across the app
-```
+### Custom Hooks
+- `useAuth.js`: Tracks custom JWT auth state across the app.
+- `useSessionStore.js`: LocalStorage-backed session management for chats.
 
 ---
 
@@ -237,8 +245,8 @@ const { user, session, loading } = useAuth();
 
 | Prefix | File | Description |
 |---|---|---|
-| `/api/v1/auth` | `auth.py` | JWT verify, upsert user, save profile, onboard-status |
-| `/api/v1/beej` | `beej.py` | Market analysis (Gemini AI) |
+| `/api/v1/auth` | `auth.py` | Google OAuth, JWT issuance, save profile, onboard-status |
+| `/api/v1/beej` | `beej.py` | Conversational market analysis (Gemini AI + Streaming) |
 | `/api/v1/mool` | `mool.py` | Financial calculation (loan, EMI, working capital) |
 | `/api/v1/shakha` | `shakha.py` | Government scheme matching |
 | `/api/v1/chhaya` | `chhaya.py` | Final feasibility report generation |
@@ -248,8 +256,8 @@ const { user, session, loading } = useAuth();
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/v1/auth/verify` | Verify Supabase JWT |
-| `POST` | `/api/v1/auth/upsert-user` | Save Google user to MySQL on login |
+| `GET` | `/api/v1/auth/google/login` | Redirect to Google OAuth consent |
+| `GET` | `/api/v1/auth/google/callback`| Handle Google callback & issue JWT |
 | `POST` | `/api/v1/auth/profile` | Save language + consent |
 | `GET` | `/api/v1/auth/onboard-status` | Check if user completed Step 1 |
 | `GET` | `/api/v1/auth/me` | Get current user info from JWT |
@@ -264,11 +272,13 @@ const { user, session, loading } = useAuth();
 | Column | Type | Description |
 |---|---|---|
 | `id` | INT PK AUTO | Internal ID |
-| `supabase_id` | VARCHAR UNIQUE | Supabase UUID (from JWT `sub`) |
+| `google_id` | VARCHAR UNIQUE | Google UUID (from Google UserInfo) |
 | `email` | VARCHAR | Google email |
-| `full_name` | VARCHAR | Google display name |
+| `name` | VARCHAR | Google display name |
+| `avatar_url` | VARCHAR | Google profile picture URL |
 | `phone` | VARCHAR | Added in InputForm |
-| `role` | ENUM | `user` / `admin` |
+| `language` | VARCHAR | Preferred language |
+| `consent` | BOOLEAN | Data consent flag |
 | `created_at` | TIMESTAMP | Auto |
 | `updated_at` | TIMESTAMP | Auto-updates |
 
@@ -276,41 +286,26 @@ const { user, session, loading } = useAuth();
 
 ## 🔐 Authentication
 
-**Provider:** Supabase (Google OAuth 2.0)
+**Provider:** Custom Google OAuth 2.0 (No third-party SDKs)
 
 ### Flow
 ```
 1. User clicks "Sign In" in Navbar
-2. Browser instantly redirected to:
-   https://<project>.supabase.co/auth/v1/authorize?provider=google&redirect_to=http://localhost:5173/auth/callback
-3. Google shows consent screen
-4. Google → Supabase callback → Supabase → http://localhost:5173/auth/callback
-5. AuthCallback.jsx:
-   a. Gets session from Supabase (access_token JWT)
-   b. Calls POST /api/v1/auth/upsert-user (saves email + name to MySQL)
-   c. Redirects to /
-6. App checks /api/v1/auth/onboard-status → shows OnboardForm or InputForm
+2. Frontend calls signInWithGoogle() → redirects to /api/v1/auth/google/login
+3. Backend redirects to Google OAuth consent screen
+4. Google → backend /api/v1/auth/google/callback
+5. Backend:
+   a. Exchanges code for Google access token
+   b. Fetches user profile from Google API
+   c. Issues our own custom JWT signed with SECRET_KEY
+   d. Redirects to http://localhost:5173/auth/callback#token=<JWT>
+6. AuthCallback.jsx extracts token, saves to localStorage.
+7. App checks /api/v1/auth/onboard-status → shows OnboardForm or InputForm
 ```
 
 ### JWT Verification (Backend)
-- Supabase issues signed JWTs with `SUPABASE_JWT_SECRET`
-- Backend uses `PyJWT` to verify every protected request
-- Secret loaded via `dotenv_values(absolute_path)` to avoid parsing issues
-
-### Required Supabase Dashboard Settings
-```
-Authentication → URL Configuration:
-  Site URL     → http://localhost:5173
-  Redirect URLs → http://localhost:5173/auth/callback
-
-Authentication → Providers → Google:
-  Enable Google → ON
-  Client ID     → from Google Cloud Console
-  Client Secret → from Google Cloud Console
-
-Google Cloud Console → OAuth 2.0 Client → Authorized Redirect URIs:
-  https://<your-project>.supabase.co/auth/v1/callback
-```
+- Backend issues and verifies JWTs using `PyJWT` and a `SECRET_KEY`.
+- No reliance on external BaaS (like Supabase) for authentication logic.
 
 ---
 
@@ -320,10 +315,10 @@ Named after the four stages of a tree — seed → root → branch → shade:
 
 | Stage | Name | Route | Function |
 |---|---|---|---|
-| 🌱 Seed | **Beej** | `/api/v1/beej` | Local market analysis — customers, competitors, demand, risks |
+| 🌱 Seed | **Beej** | `/api/v1/beej` | Conversational local market analysis (Gemini) + Dataset API fetches |
 | 🌿 Root | **Mool** | `/api/v1/mool` | Financial calc — project cost, 90% loan, EMI, interest, tenure |
 | 🌳 Branch | **Shakha** | `/api/v1/shakha` | Government scheme matching (PMEGP, MUDRA, etc.) |
-| 🌤 Shade | **Chhaya** | `/api/v1/chhaya` | Final feasibility report — go/no-go decision |
+| 🌤 Shade | **Chhaya** | `/api/v1/chhaya` | Final feasibility report & CSR funding matching |
 
 ---
 
@@ -334,28 +329,24 @@ Named after the four stages of a tree — seed → root → branch → shade:
 # MySQL (XAMPP)
 DATABASE_URL=mysql+pymysql://root:@localhost:3306/agneyaa
 
-# Supabase
-SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
-SUPABASE_JWT_SECRET="your-jwt-secret-from-supabase-settings"
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 
-# Google Gemini AI
+# API Keys
 GEMINI_API_KEY=your-gemini-api-key
+DATA_GOV_API_KEY=your-data-gov-api-key
 
-# App
+# App config
 ENVIRONMENT=development
-SECRET_KEY=your-secret-key
+SECRET_KEY=your-random-jwt-secret
+FRONTEND_URL=http://localhost:5173
+BACKEND_URL=http://localhost:8000
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-HOST=127.0.0.1
-PORT=8000
 ```
-
-> ⚠️ **Wrap `SUPABASE_JWT_SECRET` in double quotes** if it contains `/` or `+` characters.
 
 ### `frontend/.env`
 ```env
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
 VITE_API_BASE_URL=http://localhost:8000/api/v1
 ```
 
@@ -367,7 +358,6 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 - Python 3.11+
 - Node.js 18+
 - XAMPP (MySQL running on port 3306)
-- Supabase account
 
 ### Backend Setup
 ```bash
@@ -378,7 +368,7 @@ pip install -r requirements.txt
 
 # Copy and fill environment
 cp .env.example .env
-# → Fill DATABASE_URL, SUPABASE_*, GEMINI_API_KEY
+# → Fill DATABASE_URL, GOOGLE_*, GEMINI_API_KEY, DATA_GOV_API_KEY
 
 # Start server
 uvicorn app.main:app --reload --port 8000
@@ -390,9 +380,6 @@ cd frontend
 
 # Install dependencies
 npm install
-
-# Copy and fill environment
-# Create frontend/.env and fill VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
 
 # Start dev server
 npm run dev
@@ -451,8 +438,8 @@ pymysql              MySQL driver
 cryptography         Crypto utilities
 python-dotenv        .env file loading
 pydantic             Data validation
-supabase             Supabase Python client
 PyJWT                JWT token verification
+requests             HTTP requests for OAuth
 google-generativeai  Gemini AI SDK
 httpx                Async HTTP client
 python-multipart     Form data handling
@@ -465,15 +452,14 @@ python-multipart     Form data handling
 - [x] Project structure & directory setup
 - [x] React frontend with design system
 - [x] FastAPI backend with MySQL
-- [x] Supabase Google Auth integration
+- [x] Custom Google Auth integration (JWT)
 - [x] User onboarding flow (Step 1 + Step 2)
 - [x] Auto-save user to MySQL on login
-- [ ] **Beej** — AI market analysis (Gemini)
-- [ ] **Mool** — Financial calculation engine
-- [ ] **Shakha** — Government scheme matcher
-- [ ] **Chhaya** — Feasibility report PDF
+- [x] **Beej** — AI market analysis chat (Gemini)
+- [x] **Mool** — Financial calculation engine
+- [x] **Shakha** — Government scheme matcher
+- [x] **Chhaya** — Feasibility report generation
 - [ ] Multilingual AI responses
-- [ ] CSR funding module
 - [ ] Document checklist generator
 - [ ] Mobile responsive polish
 

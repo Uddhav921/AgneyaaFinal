@@ -1,107 +1,264 @@
 import { useState, useEffect } from 'react';
 import './index.css';
-import { useAuth } from './hooks/useAuth';
-import { supabase } from './lib/supabase';
+import { useAuth }         from './hooks/useAuth';
+import { useSessionStore } from './hooks/useSessionStore';
 
-import Navbar              from './components/Navbar';
-import Hero                from './components/Hero';
-import Onboarding          from './components/Onboarding';
-import AuthCallback        from './components/AuthCallback';
-import OnboardForm         from './components/OnboardForm';
-import InputMethodSelect   from './components/InputMethodSelect';
-import VoiceRecorder       from './components/VoiceRecorder';
-import InputForm           from './components/InputForm';
-import BeejChat            from './components/BeejChat';
+// ── Layout & Auth ──────────────────────────────────────
+import Navbar        from './components/Navbar';
+import AuthCallback  from './components/AuthCallback';
+import AppLayout     from './components/AppLayout';
+
+// ── Public pages ───────────────────────────────────────
+import Hero          from './components/Hero';
+import Onboarding    from './components/Onboarding';
+
+// ── Onboarding / Input ─────────────────────────────────
+import OnboardForm        from './components/OnboardForm';
+import InputMethodSelect  from './components/InputMethodSelect';
+import VoiceRecorder      from './components/VoiceRecorder';
+import InputForm          from './components/InputForm';
+
+// ── App screens (inside AppLayout) ────────────────────
+import Dashboard     from './components/Dashboard';
+import BeejChat      from './components/BeejChat';
+import MoolCalculator from './components/MoolCalculator';
+import FinalReport   from './components/FinalReport';
+import Feedback      from './components/Feedback';
 
 const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 /*
-  App state machine:
-  'landing'      → public home (not logged in)
-  'onboarding'   → Step 1: language + consent  (logged in, first time)
-  'inputMethod'  → Step 2a: choose Text or Voice input
-  'voiceInput'   → Step 2b: voice recording page
-  'inputs'       → Step 2c: text form (pre-filled if from voice)
-  'chat'         → Step 3: Beej conversational AI chat
-  'callback'     → /auth/callback route
+  ══════════════════════════════════════════════════════
+  APP STATE MACHINE
+  ══════════════════════════════════════════════════════
+  'landing'      → Public Home (Hero + Onboarding sections + Navbar)
+  'onboarding'   → OnboardForm: language + consent
+  'inputMethod'  → InputMethodSelect: Text vs Voice
+  'voiceInput'   → VoiceRecorder: record business idea
+  'inputs'       → InputForm: full business details form
+  ─── Inside AppLayout (left module sidebar) ──────────
+  'dashboard'    → Dashboard: hub — access all 4 modules
+  'chat'         → Module 1: Beej AI conversational analysis
+  'mool'         → Module 2: Mool financial calculator
+  'report'       → Module 3: Final feasibility report
+  'feedback'     → Module 4: Feedback & rating
+  ══════════════════════════════════════════════════════
 */
+
+// States that render inside AppLayout (with left module sidebar)
+const APP_LAYOUT_STATES = ['dashboard', 'chat', 'mool', 'report', 'feedback'];
 
 export default function App() {
   const { user, session, loading } = useAuth();
-  const [appState,          setAppState]          = useState('landing');
-  const [checkingOnboard,   setCheckingOnboard]   = useState(false);
-  const [submitLoading,     setSubmitLoading]     = useState(false);
-  const [voiceInitialData,  setVoiceInitialData]  = useState({});
-  const [businessContext,   setBusinessContext]   = useState({});
+  const store = useSessionStore();
 
-  // Handle /auth/callback route
-  const isCallback = window.location.pathname === '/auth/callback';
-  if (isCallback) return <AuthCallback />;
+  // ── Core state ────────────────────────────────────────
+  const [appState,         setAppState]         = useState('landing');
+  const [checkingOnboard,  setCheckingOnboard]  = useState(false);
+  const [businessContext,  setBusinessContext]  = useState({});
+  const [voiceInitialData, setVoiceInitialData] = useState({});
+  const [moolData,         setMoolData]         = useState(null);
+  const [stateRestored,    setStateRestored]    = useState(false);
 
-  // Once user logs in, check if they've completed onboarding
+  // ── Module completion tracking ────────────────────────
+  const [completedModules, setCompletedModules] = useState({ m1: false, m2: false, m3: false, m4: false });
+
+  // ── /auth/callback route ──────────────────────────────
+  if (window.location.pathname === '/auth/callback') {
+    return <AuthCallback />;
+  }
+
+  // ── Restore persisted state on mount ─────────────────
+  useEffect(() => {
+    try {
+      const saved = store.getAppState();
+      const savedMool = localStorage.getItem('agneyaa_mool_data');
+      const savedCompleted = localStorage.getItem('agneyaa_completed_modules');
+
+      if (savedMool)      setMoolData(JSON.parse(savedMool));
+      if (savedCompleted) setCompletedModules(JSON.parse(savedCompleted));
+
+      if (saved?.businessContext && Object.keys(saved.businessContext).length > 0) {
+        setBusinessContext(saved.businessContext);
+      }
+    } catch {}
+    setStateRestored(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Persist appState + businessContext on every change
+  useEffect(() => {
+    if (!stateRestored) return;
+    store.saveAppState(appState, businessContext);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appState, businessContext, stateRestored]);
+
+  // ── Persist completed modules ─────────────────────────
+  useEffect(() => {
+    if (!stateRestored) return;
+    localStorage.setItem('agneyaa_completed_modules', JSON.stringify(completedModules));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completedModules, stateRestored]);
+
+  // ── Persist mool data ─────────────────────────────────
+  useEffect(() => {
+    if (!moolData) return;
+    try { localStorage.setItem('agneyaa_mool_data', JSON.stringify(moolData)); } catch {}
+  }, [moolData]);
+
+  // ── Auth state change: check onboarding, restore session
   useEffect(() => {
     if (!user || !session) {
-      setAppState('landing');
+      if (appState !== 'landing') setAppState('landing');
       return;
     }
 
-    const checkOnboard = async () => {
+    // Has a persisted app-layout session?
+    const saved = store.getAppState();
+    const sid   = store.getCurrentSessionId();
+    const sess  = sid ? store.getSession(sid) : null;
+
+    if (APP_LAYOUT_STATES.includes(saved?.state)) {
+      if (saved.businessContext && Object.keys(saved.businessContext).length > 0) {
+        setBusinessContext(saved.businessContext);
+        setAppState(saved.state);
+        return;
+      }
+    }
+
+    // Fresh login — check onboarding status
+    (async () => {
       setCheckingOnboard(true);
       try {
-        const res = await fetch(`${API}/auth/onboard-status`, {
+        const res  = await fetch(`${API}/auth/onboard-status`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         const data = await res.json();
-        // After onboarding go to method selection, not directly to inputs
         setAppState(data.onboarded ? 'inputMethod' : 'onboarding');
       } catch {
-        setAppState('onboarding'); // default to onboarding on error
+        setAppState('onboarding');
       } finally {
         setCheckingOnboard(false);
       }
-    };
-
-    checkOnboard();
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, session]);
 
-  // Step 1 complete → save profile → move to input method selection
+  // ── Mark module complete ──────────────────────────────
+  const markDone = (mod) =>
+    setCompletedModules(prev => ({ ...prev, [mod]: true }));
+
+  // ── Navigation handler (from AppLayout sidebar or module buttons) ───
+  // When the user navigates TO a module, the PREVIOUS module is auto-marked done.
+  // This means: just visiting Mool marks Beej as done, etc.
+  const handleNavigate = (stateKey) => {
+    const prev = { chat: null, mool: 'm1', report: 'm2', feedback: 'm3' };
+    const prevMod = prev[stateKey];
+    if (prevMod) markDone(prevMod);
+    setAppState(stateKey);
+  };
+
+  // ── Profile/avatar click in Navbar (public pages) ─────
+  const handleProfileClick = () => {
+    const saved = store.getAppState();
+    if (user && saved?.businessContext && Object.keys(saved.businessContext).length > 0) {
+      setBusinessContext(saved.businessContext);
+      setAppState(APP_LAYOUT_STATES.includes(saved.state) ? saved.state : 'dashboard');
+    }
+  };
+
+  // ────────────────────────────────────────────────────────
+  // Handler functions
+  // ────────────────────────────────────────────────────────
+
+  // Step 1: Onboarding complete
   const handleOnboardComplete = async ({ language, consent }) => {
     try {
       await fetch(`${API}/auth/profile`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ language, consent }),
       });
-    } catch { /* handled in OnboardForm */ }
+    } catch {}
     setAppState('inputMethod');
   };
 
-  // User picked text → go to form
+  // Step 2a: Method select
   const handleMethodSelect = (method) => {
     if (method === 'text') {
-      setVoiceInitialData({});
+      const saved = store.getFormData();
+      setVoiceInitialData(saved || {});
       setAppState('inputs');
     } else {
       setAppState('voiceInput');
     }
   };
 
-  // Voice done → pre-fill business_idea and go to form
+  // Step 2b: Voice transcript
   const handleVoiceTranscript = (transcript) => {
     setVoiceInitialData({ business_idea: transcript });
     setAppState('inputs');
   };
 
-  // Step 2 complete → open Beej chat with business context
-  const handleInputSubmit = async (formData) => {
-    setBusinessContext(formData);
-    setAppState('chat');
+  // Step 2c: Form data saved on every field change
+  const handleFormChange = (formData) => {
+    store.saveFormData(formData);
   };
 
-  // Loading state while checking session / onboard status
+  // Step 2 → Dashboard: form submitted
+  const handleInputSubmit = (formData) => {
+    setBusinessContext(formData);
+    store.saveFormData(formData);
+    store.setCurrentSessionId(null); // fresh Beej session
+    setAppState('dashboard');
+  };
+
+  // Edit inputs (from Dashboard)
+  const handleEditInputs = () => {
+    const saved = store.getFormData() || businessContext;
+    setVoiceInitialData(saved);
+    setAppState('inputs');
+  };
+
+  // Module 1 (Beej) → go to Module 2 (called from "Continue" button inside chat)
+  const handleBeejDone = () => {
+    markDone('m1');
+    setAppState('mool');
+  };
+
+  // Module 2 (Mool) → store data + go to Module 3
+  const handleMoolNext = (data) => {
+    setMoolData(data);
+    markDone('m2');
+    setAppState('report');
+  };
+
+  // Module 3 (Report) → go to Module 4
+  const handleReportNext = () => {
+    markDone('m3');
+    setAppState('feedback');
+  };
+
+  // Module 4 (Feedback) → mark done + go to dashboard
+  const handleFeedbackSubmit = () => {
+    markDone('m4');
+    setAppState('dashboard');
+  };
+
+  // "New Analysis" — reset everything
+  const handleNewSession = () => {
+    store.setCurrentSessionId(null);
+    store.clearFormData();
+    setVoiceInitialData({});
+    setBusinessContext({});
+    setMoolData(null);
+    setCompletedModules({ m1: false, m2: false, m3: false, m4: false });
+    setAppState('inputMethod');
+  };
+
+  // ────────────────────────────────────────────────────────
+  // Loading spinner
+  // ────────────────────────────────────────────────────────
   if (loading || checkingOnboard) {
     return (
       <div style={{
@@ -110,22 +267,41 @@ export default function App() {
         flexDirection: 'column', gap: '1rem',
       }}>
         <div style={{
-          width: 36, height: 36, border: '3px solid rgba(111,187,124,0.2)',
+          width: 36, height: 36,
+          border: '3px solid rgba(111,187,124,0.2)',
           borderTopColor: 'var(--leaf)', borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',
         }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <span style={{ fontSize: '0.9rem' }}>Loading…</span>
+        <span style={{ fontSize: '0.9rem' }}>Loading Agneyaa…</span>
       </div>
     );
   }
 
-  // ── Render by state ──────────────────────────────────────────
+  // ────────────────────────────────────────────────────────
+  // RENDER: Public pre-auth screens (no AppLayout)
+  // ────────────────────────────────────────────────────────
+  if (appState === 'landing') {
+    return (
+      <>
+        <Navbar onProfileClick={user ? handleProfileClick : undefined} />
+        <main>
+          <Hero />
+          <Onboarding />
+        </main>
+      </>
+    );
+  }
+
   if (appState === 'onboarding') {
     return (
       <>
-        <Navbar />
-        <OnboardForm user={user} onComplete={handleOnboardComplete} onBack={() => setAppState('landing')} />
+        <Navbar onProfileClick={handleProfileClick} />
+        <OnboardForm
+          user={user}
+          onComplete={handleOnboardComplete}
+          onBack={() => setAppState('landing')}
+        />
       </>
     );
   }
@@ -133,8 +309,11 @@ export default function App() {
   if (appState === 'inputMethod') {
     return (
       <>
-        <Navbar />
-        <InputMethodSelect onSelect={handleMethodSelect} onBack={() => setAppState('onboarding')} />
+        <Navbar onProfileClick={handleProfileClick} />
+        <InputMethodSelect
+          onSelect={handleMethodSelect}
+          onBack={() => setAppState('onboarding')}
+        />
       </>
     );
   }
@@ -142,7 +321,7 @@ export default function App() {
   if (appState === 'voiceInput') {
     return (
       <>
-        <Navbar />
+        <Navbar onProfileClick={handleProfileClick} />
         <VoiceRecorder
           onTranscriptReady={handleVoiceTranscript}
           onBack={() => setAppState('inputMethod')}
@@ -154,10 +333,11 @@ export default function App() {
   if (appState === 'inputs') {
     return (
       <>
-        <Navbar />
+        <Navbar onProfileClick={handleProfileClick} />
         <InputForm
           onSubmit={handleInputSubmit}
-          loading={submitLoading}
+          onFormChange={handleFormChange}
+          loading={false}
           initialData={voiceInitialData}
           onBack={() => setAppState('inputMethod')}
         />
@@ -165,24 +345,110 @@ export default function App() {
     );
   }
 
-  if (appState === 'chat') {
+  // ────────────────────────────────────────────────────────
+  // RENDER: App screens — all inside AppLayout with left sidebar
+  // ────────────────────────────────────────────────────────
+  if (APP_LAYOUT_STATES.includes(appState)) {
     return (
-      <BeejChat
-        businessContext={businessContext}
-        session={session}
-        onBack={() => setAppState('inputs')}
-      />
+      <AppLayout
+        appState={appState}
+        user={user}
+        completedModules={completedModules}
+        onNavigate={handleNavigate}
+      >
+        {/* Dashboard */}
+        {appState === 'dashboard' && (
+          <Dashboard
+            businessContext={businessContext}
+            user={user}
+            completedModules={completedModules}
+            onModule={handleNavigate}
+            onEditInputs={handleEditInputs}
+          />
+        )}
+
+        {/* Module 1 — Beej AI Chat */}
+        {appState === 'chat' && (
+          <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
+            <div style={{ flex:1, minHeight:0 }}>
+              <BeejChat
+                businessContext={businessContext}
+                session={session}
+                onBack={() => setAppState('dashboard')}
+                onNewSession={handleNewSession}
+                onProceedToMool={handleBeejDone}
+              />
+            </div>
+            {/* "Continue to Module 2" action bar */}
+            <div style={{
+              flexShrink: 0,
+              padding: '0.6rem 1.25rem',
+              background: 'linear-gradient(90deg, rgba(10,26,14,0.98), rgba(10,26,14,0.95))',
+              borderTop: '1px solid rgba(111,187,124,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+            }}>
+              <span style={{ fontSize:'0.74rem', color:'var(--text-muted)' }}>
+                💡 When you're done discussing with Beej, proceed to the Financial Calculator
+              </span>
+              <button
+                onClick={handleBeejDone}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.4rem',
+                  padding: '0.5rem 1.1rem',
+                  background: 'linear-gradient(135deg, #81b4f5, #5a96e8)',
+                  border: 'none', borderRadius: '9px', color: '#0a1420',
+                  fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                  fontFamily: 'inherit', whiteSpace: 'nowrap',
+                  transition: 'all 0.2s',
+                }}
+              >
+                💰 Continue to Module 2 &rarr;
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Module 2 — Mool Financial Calculator */}
+        {appState === 'mool' && (
+          <MoolCalculator
+            businessContext={businessContext}
+            onNext={handleMoolNext}
+            onBack={() => setAppState('chat')}
+            onMoolData={setMoolData}
+          />
+        )}
+
+        {/* Module 3 — Final Report */}
+        {appState === 'report' && (
+          <FinalReport
+            businessContext={businessContext}
+            moolData={moolData}
+            onBack={() => setAppState('mool')}
+            onNext={handleReportNext}
+          />
+        )}
+
+        {/* Module 4 — Feedback */}
+        {appState === 'feedback' && (
+          <Feedback
+            businessContext={businessContext}
+            onSubmit={handleFeedbackSubmit}
+            onBack={() => setAppState('report')}
+            onGoHome={() => setAppState('dashboard')}
+          />
+        )}
+      </AppLayout>
     );
   }
 
-  // Default: landing page
+  // Fallback
   return (
     <>
-      <Navbar />
-      <main>
-        <Hero />
-        <Onboarding />
-      </main>
+      <Navbar onProfileClick={handleProfileClick} />
+      <main><Hero /><Onboarding /></main>
     </>
   );
 }

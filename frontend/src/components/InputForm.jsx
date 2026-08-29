@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styles from './InputForm.module.css';
 import PageNav from './PageNav';
 
@@ -44,7 +44,7 @@ const LAND_OPTIONS = [
  * own capital, category, caste_category, land_owned, target_customers.
  * Accepts initialData to pre-populate fields from voice transcript.
  */
-export default function InputForm({ onSubmit, loading, initialData = {}, onBack }) {
+export default function InputForm({ onSubmit, loading, initialData = {}, onBack, onFormChange }) {
   const formRef = useRef(null);
   const [form, setForm] = useState({
     full_name:        initialData.full_name        || '',
@@ -60,6 +60,13 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack 
     target_customers: initialData.target_customers || '',
   });
   const [errors, setErrors] = useState({});
+
+  // Persist form data to localStorage as user types
+  useEffect(() => {
+    onFormChange?.(form);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form]);
+
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
