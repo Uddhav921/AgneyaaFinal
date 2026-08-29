@@ -19,9 +19,9 @@ const LANGUAGES = [
  */
 export default function OnboardForm({ user, onComplete, onBack }) {
   const [language, setLanguage] = useState('en');
-  const [consent,  setConsent]  = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState('');
+  const [consent, setConsent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ export default function OnboardForm({ user, onComplete, onBack }) {
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'there';
 
   const handleForward = () => {
-    if (consent) handleSubmit({ preventDefault: () => {} });
+    if (consent) handleSubmit({ preventDefault: () => { } });
   };
 
   return (

@@ -225,6 +225,14 @@ def build_system_prompt(business_context: dict, dataset_data: dict) -> str:
 
     state_info = postal.get("state", bc.get("district", "the region"))
 
+    # ── Language support ─────────────────────────────────────────
+    _lang_map = {
+        'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'gu': 'Gujarati',
+        'ta': 'Tamil',   'te': 'Telugu','kn': 'Kannada', 'bn': 'Bengali',
+    }
+    lang_code     = bc.get('language', 'en') or 'en'
+    language_name = _lang_map.get(lang_code, 'English')
+
     system = f"""You are Beej, an expert AI business advisor for rural Indian entrepreneurs, built for the Agneyaa platform (SIH 2026). Your name is Beej (meaning "seed" — you help entrepreneurs plant and grow their business). You are warm, practical, and deeply knowledgeable about rural Indian markets, government schemes, and local entrepreneurship.
 
 ## USER'S BUSINESS CONTEXT (provided by user — treat as User Data 🔵)
@@ -271,7 +279,7 @@ def build_system_prompt(business_context: dict, dataset_data: dict) -> str:
 
 5. **After every response**, mentally note 3–4 follow-up questions that would naturally come next based on what you just discussed. These will be shown as suggestion chips to the user.
 
-6. **Language**: Respond in English by default. If the user writes in Hindi, respond in Hindi.
+6. **Language — CRITICAL**: The user has selected **{language_name}** (code: `{lang_code}`) as their preferred language. You MUST respond ENTIRELY in {language_name} for every single response. Do NOT mix languages or switch back to English. All analysis, greetings, and explanations must be in {language_name}.
 
 7. **For financial calculations**:
    - Always show the formula/logic
@@ -283,6 +291,7 @@ def build_system_prompt(business_context: dict, dataset_data: dict) -> str:
 Begin each conversation with a warm, practical first analysis covering: market opportunity, financial quick-check, and the top matching government scheme. Then ask one specific clarifying question to deepen the analysis."""
 
     return system
+
 
 
 # ── Follow-up Question Generator ─────────────────────────────────

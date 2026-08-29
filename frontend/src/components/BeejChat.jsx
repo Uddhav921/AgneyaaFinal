@@ -82,20 +82,25 @@ function ReportBody({ text }) {
   );
 }
 
+// Language code map for SpeechRecognition + TTS
+const LANG_CODES = {
+  en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN', gu: 'gu-IN',
+  ta: 'ta-IN', te: 'te-IN', kn: 'kn-IN', bn: 'bn-IN',
+};
+
 // ── Voice helpers ────────────────────────────────────────────────
 function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
-function speakText(text, onEnd) {
+function speakText(text, onEnd, langCode = 'en-IN') {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
-  // Strip emoji and markdown symbols for cleaner TTS
   const clean = text.replace(/[🟢🔵🟡🌱📋🏢📊💰🏛️⚠️✅🎯]/gu, '').replace(/\*\*/g, '').replace(/#{1,3} /g, '');
-  const utt = new SpeechSynthesisUtterance(clean.slice(0, 800)); // cap at 800 chars
+  const utt = new SpeechSynthesisUtterance(clean.slice(0, 800));
   utt.rate = 1.0;
   utt.pitch = 1.0;
-  utt.lang = 'en-IN';
+  utt.lang = langCode;
   if (onEnd) utt.onend = onEnd;
   window.speechSynthesis.speak(utt);
 }
@@ -107,7 +112,7 @@ function stopSpeaking() {
 // ══════════════════════════════════════════════════════════════════
 // BeejChat Component
 // ══════════════════════════════════════════════════════════════════
-export default function BeejChat({ businessContext, session, onBack, onNewSession }) {
+export default function BeejChat({ businessContext, session, onBack, onNewSession, fromVoice }) {
   const store = useSessionStore();
 
   // ── Session state ────────────────────────────────────────────
@@ -128,8 +133,10 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
   const [statusDot,         setStatusDot]         = useState('online');
 
   // ── Voice ────────────────────────────────────────────────────
+  const lang = LANG_CODES[businessContext?.language] || 'en-IN';
   const [isListening,       setIsListening]       = useState(false);
-  const [ttsEnabled,        setTtsEnabled]        = useState(false);
+  // Auto-enable TTS when user came from voice input
+  const [ttsEnabled,        setTtsEnabled]        = useState(!!fromVoice);
   const [isSpeaking,        setIsSpeaking]        = useState(false);
   const recogRef = useRef(null);
 
@@ -333,7 +340,7 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          business_context:     businessCtx,
+          business_context:     { ...businessCtx, language: businessCtx?.language || 'en' },
           conversation_history: history,
           user_message:         msg,
           dataset_data:         datasetData,
@@ -362,7 +369,7 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
     recogRef.current = recog;
     recog.continuous     = false;
     recog.interimResults = true;
-    recog.lang           = 'en-IN';
+    recog.lang           = lang; // use user's selected language
 
     recog.onstart  = () => setIsListening(true);
     recog.onend    = () => setIsListening(false);
@@ -388,7 +395,7 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
   // ── Replay TTS for specific message ─────────────────────────
   const replayTts = (text) => {
     setIsSpeaking(true);
-    speakText(text, () => setIsSpeaking(false));
+    speakText(text, () => setIsSpeaking(false), lang);
   };
 
   // ── Generate Report ──────────────────────────────────────────
@@ -546,6 +553,12 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
           </div>
 
           <div className={styles.headerActions}>
+            {/* Language indicator */}
+            {businessCtx?.language && businessCtx.language !== 'en' && (
+              <span style={{ fontSize:'0.65rem', color:'var(--gold)', background:'rgba(224,178,78,0.1)', border:'1px solid rgba(224,178,78,0.2)', borderRadius:'99px', padding:'0.15rem 0.5rem', fontWeight:700 }}>
+                {businessCtx.language.toUpperCase()}
+              </span>
+            )}
             {/* TTS toggle */}
             <button
               className={`${styles.headerIconBtn} ${ttsEnabled ? styles.active : ''}`}
@@ -553,16 +566,6 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
               title={ttsEnabled ? 'Disable voice responses' : 'Enable voice responses'}
             >
               {isSpeaking ? '🔊' : ttsEnabled ? '🔈' : '🔇'}
-            </button>
-
-            {/* Generate Report */}
-            <button
-              className={styles.reportBtn}
-              onClick={handleGenerateReport}
-              disabled={isGenReport || messages.length < 2}
-              title="Generate Business Feasibility Report"
-            >
-              {isGenReport ? '⏳' : '📋'} Report
             </button>
           </div>
 

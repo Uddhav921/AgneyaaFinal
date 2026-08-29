@@ -72,7 +72,7 @@ export function getNavId(appState) {
  *   onNavigate       — (stateKey) => void
  *   children         — main content area
  */
-export default function AppLayout({ appState, user, completedModules = {}, onNavigate, children }) {
+export default function AppLayout({ appState, user, completedModules = {}, onNavigate, onHome, children }) {
   const activeId = getNavId(appState);
 
   const isAccessible = (item) => {
@@ -103,8 +103,17 @@ export default function AppLayout({ appState, user, completedModules = {}, onNav
       {/* ── Left Module Sidebar ── */}
       <aside className={styles.sidebar}>
 
-        {/* Brand */}
+        {/* Brand + Home */}
         <div className={styles.brand}>
+          {onHome && (
+            <button
+              className={styles.homeBtn}
+              onClick={onHome}
+              title="Back to Home"
+            >
+              ←
+            </button>
+          )}
           <span className={styles.flame}>🔥</span>
           <span className={styles.brandName}>Agneyaa</span>
         </div>

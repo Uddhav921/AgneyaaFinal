@@ -1,29 +1,28 @@
 import { useState, useEffect } from 'react';
 import './index.css';
-import { useAuth }         from './hooks/useAuth';
+import { useAuth } from './hooks/useAuth';
 import { useSessionStore } from './hooks/useSessionStore';
 
 // ── Layout & Auth ──────────────────────────────────────
-import Navbar        from './components/Navbar';
-import AuthCallback  from './components/AuthCallback';
-import AppLayout     from './components/AppLayout';
+import Navbar from './components/Navbar';
+import AuthCallback from './components/AuthCallback';
+import AppLayout from './components/AppLayout';
 
-// ── Public pages ───────────────────────────────────────
-import Hero          from './components/Hero';
-import Onboarding    from './components/Onboarding';
+// ── Public pages ───────────────────────────────────────────
+import LandingPage from './components/LandingPage';
 
 // ── Onboarding / Input ─────────────────────────────────
-import OnboardForm        from './components/OnboardForm';
-import InputMethodSelect  from './components/InputMethodSelect';
-import VoiceRecorder      from './components/VoiceRecorder';
-import InputForm          from './components/InputForm';
+import OnboardForm from './components/OnboardForm';
+import InputMethodSelect from './components/InputMethodSelect';
+import VoiceRecorder from './components/VoiceRecorder';
+import InputForm from './components/InputForm';
 
 // ── App screens (inside AppLayout) ────────────────────
-import Dashboard     from './components/Dashboard';
-import BeejChat      from './components/BeejChat';
+import Dashboard from './components/Dashboard';
+import BeejChat from './components/BeejChat';
 import MoolCalculator from './components/MoolCalculator';
-import FinalReport   from './components/FinalReport';
-import Feedback      from './components/Feedback';
+import FinalReport from './components/FinalReport';
+import Feedback from './components/Feedback';
 
 const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -31,7 +30,7 @@ const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
   ══════════════════════════════════════════════════════
   APP STATE MACHINE
   ══════════════════════════════════════════════════════
-  'landing'      → Public Home (Hero + Onboarding sections + Navbar)
+  'landing'      → Public Home (LandingPage + Navbar)
   'onboarding'   → OnboardForm: language + consent
   'inputMethod'  → InputMethodSelect: Text vs Voice
   'voiceInput'   → VoiceRecorder: record business idea
@@ -52,15 +51,16 @@ export default function App() {
   const { user, session, loading } = useAuth();
   const store = useSessionStore();
 
-  // ── Core state ────────────────────────────────────────
-  const [appState,         setAppState]         = useState('landing');
-  const [checkingOnboard,  setCheckingOnboard]  = useState(false);
-  const [businessContext,  setBusinessContext]  = useState({});
+  // ── Core state ────────────────────────────────────────────────────
+  const [appState, setAppState] = useState('landing');
+  const [checkingOnboard, setCheckingOnboard] = useState(false);
+  const [businessContext, setBusinessContext] = useState({});
   const [voiceInitialData, setVoiceInitialData] = useState({});
-  const [moolData,         setMoolData]         = useState(null);
-  const [stateRestored,    setStateRestored]    = useState(false);
+  const [moolData, setMoolData] = useState(null);
+  const [stateRestored, setStateRestored] = useState(false);
+  const [fromVoice, setFromVoice] = useState(false); // track if user used voice input
 
-  // ── Module completion tracking ────────────────────────
+  // ── Module completion tracking ──────────────────────────────────
   const [completedModules, setCompletedModules] = useState({ m1: false, m2: false, m3: false, m4: false });
 
   // ── /auth/callback route ──────────────────────────────
@@ -75,35 +75,35 @@ export default function App() {
       const savedMool = localStorage.getItem('agneyaa_mool_data');
       const savedCompleted = localStorage.getItem('agneyaa_completed_modules');
 
-      if (savedMool)      setMoolData(JSON.parse(savedMool));
+      if (savedMool) setMoolData(JSON.parse(savedMool));
       if (savedCompleted) setCompletedModules(JSON.parse(savedCompleted));
 
       if (saved?.businessContext && Object.keys(saved.businessContext).length > 0) {
         setBusinessContext(saved.businessContext);
       }
-    } catch {}
+    } catch { }
     setStateRestored(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Persist appState + businessContext on every change
   useEffect(() => {
     if (!stateRestored) return;
     store.saveAppState(appState, businessContext);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appState, businessContext, stateRestored]);
 
   // ── Persist completed modules ─────────────────────────
   useEffect(() => {
     if (!stateRestored) return;
     localStorage.setItem('agneyaa_completed_modules', JSON.stringify(completedModules));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completedModules, stateRestored]);
 
   // ── Persist mool data ─────────────────────────────────
   useEffect(() => {
     if (!moolData) return;
-    try { localStorage.setItem('agneyaa_mool_data', JSON.stringify(moolData)); } catch {}
+    try { localStorage.setItem('agneyaa_mool_data', JSON.stringify(moolData)); } catch { }
   }, [moolData]);
 
   // ── Auth state change: check onboarding, restore session
@@ -115,8 +115,8 @@ export default function App() {
 
     // Has a persisted app-layout session?
     const saved = store.getAppState();
-    const sid   = store.getCurrentSessionId();
-    const sess  = sid ? store.getSession(sid) : null;
+    const sid = store.getCurrentSessionId();
+    const sess = sid ? store.getSession(sid) : null;
 
     if (APP_LAYOUT_STATES.includes(saved?.state)) {
       if (saved.businessContext && Object.keys(saved.businessContext).length > 0) {
@@ -127,21 +127,10 @@ export default function App() {
     }
 
     // Fresh login — check onboarding status
-    (async () => {
-      setCheckingOnboard(true);
-      try {
-        const res  = await fetch(`${API}/auth/onboard-status`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        const data = await res.json();
-        setAppState(data.onboarded ? 'inputMethod' : 'onboarding');
-      } catch {
-        setAppState('onboarding');
-      } finally {
-        setCheckingOnboard(false);
-      }
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const hasOnboarded = localStorage.getItem('agneyaa_onboarded');
+    setCheckingOnboard(false);
+    setAppState(hasOnboarded === 'true' ? 'inputMethod' : 'onboarding');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, session]);
 
   // ── Mark module complete ──────────────────────────────
@@ -173,13 +162,9 @@ export default function App() {
 
   // Step 1: Onboarding complete
   const handleOnboardComplete = async ({ language, consent }) => {
-    try {
-      await fetch(`${API}/auth/profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ language, consent }),
-      });
-    } catch {}
+    // Save language for multilingual support
+    localStorage.setItem('agneyaa_language', language);
+    localStorage.setItem('agneyaa_onboarded', 'true');
     setAppState('inputMethod');
   };
 
@@ -194,8 +179,9 @@ export default function App() {
     }
   };
 
-  // Step 2b: Voice transcript
+  // Step 2b: Voice transcript — pre-fill form AND flag as voice session
   const handleVoiceTranscript = (transcript) => {
+    setFromVoice(true);
     setVoiceInitialData({ business_idea: transcript });
     setAppState('inputs');
   };
@@ -207,8 +193,11 @@ export default function App() {
 
   // Step 2 → Dashboard: form submitted
   const handleInputSubmit = (formData) => {
-    setBusinessContext(formData);
-    store.saveFormData(formData);
+    // Merge saved language into businessContext
+    const lang = localStorage.getItem('agneyaa_language') || 'en';
+    const ctx = { ...formData, language: lang };
+    setBusinessContext(ctx);
+    store.saveFormData(ctx);
     store.setCurrentSessionId(null); // fresh Beej session
     setAppState('dashboard');
   };
@@ -285,10 +274,11 @@ export default function App() {
     return (
       <>
         <Navbar onProfileClick={user ? handleProfileClick : undefined} />
-        <main>
-          <Hero />
-          <Onboarding />
-        </main>
+        <LandingPage
+          isLoggedIn={!!user}
+          onGetStarted={() => setAppState(user ? 'inputMethod' : 'onboarding')}
+          onDashboard={user ? handleProfileClick : undefined}
+        />
       </>
     );
   }
@@ -355,6 +345,7 @@ export default function App() {
         user={user}
         completedModules={completedModules}
         onNavigate={handleNavigate}
+        onHome={() => setAppState('landing')}
       >
         {/* Dashboard */}
         {appState === 'dashboard' && (
@@ -369,14 +360,15 @@ export default function App() {
 
         {/* Module 1 — Beej AI Chat */}
         {appState === 'chat' && (
-          <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
-            <div style={{ flex:1, minHeight:0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+            <div style={{ flex: 1, minHeight: 0 }}>
               <BeejChat
                 businessContext={businessContext}
                 session={session}
                 onBack={() => setAppState('dashboard')}
                 onNewSession={handleNewSession}
                 onProceedToMool={handleBeejDone}
+                fromVoice={fromVoice}
               />
             </div>
             {/* "Continue to Module 2" action bar */}
@@ -390,7 +382,7 @@ export default function App() {
               justifyContent: 'space-between',
               gap: '1rem',
             }}>
-              <span style={{ fontSize:'0.74rem', color:'var(--text-muted)' }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                 💡 When you're done discussing with Beej, proceed to the Financial Calculator
               </span>
               <button
