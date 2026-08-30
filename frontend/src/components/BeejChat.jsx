@@ -133,12 +133,16 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
   const [statusDot,         setStatusDot]         = useState('online');
 
   // ── Voice ────────────────────────────────────────────────────
-  const lang = LANG_CODES[businessContext?.language] || 'en-IN';
+  // Derive lang from live state so language changes take effect immediately
+  const lang = LANG_CODES[businessCtx?.language] || LANG_CODES[businessContext?.language] || 'en-IN';
   const [isListening,       setIsListening]       = useState(false);
+  const [voiceError,        setVoiceError]        = useState('');
   // Auto-enable TTS when user came from voice input
   const [ttsEnabled,        setTtsEnabled]        = useState(!!fromVoice);
   const [isSpeaking,        setIsSpeaking]        = useState(false);
-  const recogRef = useRef(null);
+  const recogRef      = useRef(null);
+  // Keep a ref to sendMessage so voice onresult always uses the latest version
+  const sendMessageRef = useRef(null);
 
   // ── Report ───────────────────────────────────────────────────
   const [showReport,        setShowReport]        = useState(false);
@@ -155,11 +159,15 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, []);
 
+  // Guard: don't save session until it has been fully initialized
+  const sessionReadyRef = useRef(false);
+
   useEffect(() => { scrollToBottom(); }, [messages, followups, scrollToBottom]);
 
   // ── Save session whenever messages/followups/report change ───
+  // Only runs AFTER initialization is complete (guarded by sessionReadyRef)
   useEffect(() => {
-    if (!currentSessionId) return;
+    if (!currentSessionId || !sessionReadyRef.current) return;
     store.updateSession(currentSessionId, {
       messages,
       followups,
@@ -176,8 +184,8 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
     const existingId = store.getCurrentSessionId();
     const existing   = existingId ? store.getSession(existingId) : null;
 
-    if (existing && existing.messages?.length > 0) {
-      // Restore existing session
+    if (existing && existing.messages && existing.messages.length > 0) {
+      // Session has messages - restore as-is, NO new analysis
       setCurrentSessionId(existingId);
       setMessages(existing.messages);
       setFollowups(existing.followups || []);
@@ -185,6 +193,12 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
       setBusinessCtx(existing.businessContext || businessContext);
       setReportText(existing.report || '');
       setIsInitializing(false);
+      sessionReadyRef.current = true;
+    } else if (existing) {
+      // Session exists but 0 messages - run analysis once
+      setCurrentSessionId(existingId);
+      setBusinessCtx(existing.businessContext || businessContext);
+      startInitialAnalysis(existing.businessContext || businessContext);
     } else {
       // Brand new session
       const newSess = store.createSession(businessContext);
@@ -227,6 +241,8 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
       appendError(`Could not connect to Beej: ${err.message}`);
     } finally {
       setStatusDot('online');
+      // Only start persisting AFTER initial stream completes
+      sessionReadyRef.current = true;
     }
   }
 
@@ -351,40 +367,83 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputText, isStreaming, messages, businessCtx, datasetData]);
 
+  // Keep the ref in sync so voice callbacks always call the latest sendMessage
+  useEffect(() => { sendMessageRef.current = sendMessage; }, [sendMessage]);
+
   // ── Voice input ──────────────────────────────────────────────
   const toggleVoice = useCallback(() => {
     const SpeechRec = getSpeechRecognition();
     if (!SpeechRec) {
-      alert('Voice input is not supported in this browser. Please try Chrome.');
+      setVoiceError('Voice input not supported. Please use Chrome or Edge.');
+      setTimeout(() => setVoiceError(''), 4000);
       return;
     }
 
+    // Stop if already listening
     if (isListening) {
       recogRef.current?.stop();
       setIsListening(false);
       return;
     }
 
+    setVoiceError('');
     const recog = new SpeechRec();
     recogRef.current = recog;
-    recog.continuous     = false;
+    recog.continuous     = true;   // keep listening until user stops
     recog.interimResults = true;
-    recog.lang           = lang; // use user's selected language
+    recog.lang           = lang;   // derived from live businessCtx state
 
-    recog.onstart  = () => setIsListening(true);
-    recog.onend    = () => setIsListening(false);
-    recog.onerror  = () => setIsListening(false);
+    recog.onstart = () => setIsListening(true);
 
-    recog.onresult = (e) => {
-      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
-      setInputText(transcript);
-      if (e.results[e.results.length - 1].isFinal) {
-        sendMessage(transcript);
+    recog.onend = () => {
+      setIsListening(false);
+    };
+
+    recog.onerror = (event) => {
+      setIsListening(false);
+      const errorMessages = {
+        'not-allowed':     'Microphone access denied. Please allow mic permission in your browser.',
+        'no-speech':       'No speech detected. Please speak clearly and try again.',
+        'audio-capture':   'No microphone found. Please connect a microphone.',
+        'network':         'Network error during voice recognition. Check your connection.',
+        'aborted':         '', // user stopped, no error needed
+      };
+      const msg = errorMessages[event.error] || `Voice error: ${event.error}`;
+      if (msg) {
+        setVoiceError(msg);
+        setTimeout(() => setVoiceError(''), 5000);
       }
     };
 
-    recog.start();
-  }, [isListening, sendMessage]);
+    recog.onresult = (e) => {
+      // Build transcript from all results
+      let interimTranscript = '';
+      let finalTranscript   = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const text = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalTranscript += text;
+        else interimTranscript += text;
+      }
+
+      // Show interim text in the input box for live feedback
+      setInputText(finalTranscript || interimTranscript);
+
+      // Send once we have a final result
+      if (finalTranscript.trim()) {
+        recog.stop(); // stop listening after sending
+        // Use ref so we always call the latest sendMessage (avoids stale closure)
+        sendMessageRef.current?.(finalTranscript.trim());
+      }
+    };
+
+    try {
+      recog.start();
+    } catch (err) {
+      setVoiceError(`Could not start microphone: ${err.message}`);
+      setTimeout(() => setVoiceError(''), 5000);
+    }
+  // lang changes when user switches language — re-create the recogniser
+  }, [isListening, lang]);
 
   // ── TTS toggle ───────────────────────────────────────────────
   const toggleTts = () => {
@@ -656,15 +715,32 @@ export default function BeejChat({ businessContext, session, onBack, onNewSessio
 
         {/* Input */}
         <div className={styles.inputArea}>
+          {/* Voice error toast */}
+          {voiceError && (
+            <div style={{
+              background: 'rgba(192,57,43,0.15)',
+              border: '1px solid rgba(192,57,43,0.4)',
+              color: '#e74c3c',
+              borderRadius: '8px',
+              padding: '0.45rem 0.8rem',
+              fontSize: '0.78rem',
+              marginBottom: '0.4rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+            }}>
+              ⚠️ {voiceError}
+            </div>
+          )}
           <div className={styles.inputRow}>
             {/* Mic button */}
             <button
               className={`${styles.micBtn} ${isListening ? styles.listening : ''}`}
               onClick={toggleVoice}
               disabled={isStreaming || isInitializing}
-              title={isListening ? 'Stop listening' : 'Voice input (speak your question)'}
+              title={isListening ? '🔴 Listening — click to stop' : 'Voice input — click to speak'}
             >
-              🎤
+              {isListening ? '🔴' : '🎤'}
             </button>
 
             <textarea

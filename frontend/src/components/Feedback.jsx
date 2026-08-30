@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import styles from './Feedback.module.css';
+import { useLanguage } from '../hooks/useLanguage.jsx';
 
 const STAR_LABELS = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
@@ -33,7 +34,17 @@ const SUGGEST_CHIPS = [
  *   onGoHome         — () => void
  */
 export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }) {
+  const { t } = useLanguage();
   const bc = businessContext || {};
+
+  // Build translated sub-items inside component so t() is live
+  const SUB_ITEMS_T = [
+    { key: 'ease',     label: t('feedback_ease') },
+    { key: 'accuracy', label: t('feedback_accuracy') },
+    { key: 'helpful',  label: t('feedback_helpful') },
+    { key: 'finance',  label: t('feedback_finance') },
+    { key: 'report',   label: t('feedback_report_quality') },
+  ];
 
   const [rating,    setRating]    = useState(0);
   const [hovered,   setHovered]   = useState(0);
@@ -76,10 +87,9 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
       <div className={styles.wrap}>
         <div className={styles.thankYou}>
           <div className={styles.tyIcon}>🎉</div>
-          <div className={styles.tyTitle}>Thank You for Your Feedback!</div>
+          <div className={styles.tyTitle}>{t('feedback_thanks_title')}</div>
           <div className={styles.tyDesc}>
-            Your feedback on <strong>{bc.business_idea || 'your business analysis'}</strong> has been saved.
-            It helps us improve Agneyaa for thousands of rural entrepreneurs across India. 🌱
+            {t('feedback_thanks_msg')}
           </div>
           <div style={{ fontSize: '1.5rem', letterSpacing: '0.1em' }}>
             {'⭐'.repeat(rating)}
@@ -89,7 +99,7 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
               ← View Report
             </button>
             <button className={`${styles.tyBtn} ${styles.primary}`} onClick={onGoHome}>
-              🏠 Go to Dashboard
+              {t('feedback_home_btn')}
             </button>
           </div>
         </div>
@@ -104,7 +114,7 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
         {/* Header */}
         <div>
           <span className={styles.badge}>⭐ Module 4 — Feedback</span>
-          <h2 className={styles.title}>Share Your Experience</h2>
+          <h2 className={styles.title}>{t('feedback_title')}</h2>
           <p className={styles.subtitle}>
             Your feedback helps improve Agneyaa for rural entrepreneurs across India.
           </p>
@@ -112,7 +122,7 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
 
         {/* Overall Rating */}
         <div className={styles.card}>
-          <div className={styles.cardTitle}>⭐ Overall Rating</div>
+          <div className={styles.cardTitle}>{t('feedback_overall')}</div>
           <div className={styles.starRow}>
             <div className={styles.stars}>
               {[1,2,3,4,5].map(n => (
@@ -133,9 +143,9 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
 
         {/* Sub-ratings per module */}
         <div className={styles.card}>
-          <div className={styles.cardTitle}>📊 Rate Each Feature</div>
+          <div className={styles.cardTitle}>{t('feedback_sub_ratings')}</div>
           <div className={styles.subRatings}>
-            {SUB_ITEMS.map(item => (
+            {SUB_ITEMS_T.map(item => (
               <div key={item.key} className={styles.subRating}>
                 <span className={styles.subLabel}>{item.label}</span>
                 <div className={styles.miniStars}>
@@ -154,13 +164,13 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
 
         {/* Open feedback */}
         <div className={styles.card}>
-          <div className={styles.cardTitle}>💬 Your Feedback</div>
+          <div className={styles.cardTitle}>{t('feedback_written')}</div>
           <label className={styles.label}>
-            Tell us what worked well or what can be improved
+            {t('feedback_written_ph')}
           </label>
           <textarea
             className={styles.textarea}
-            placeholder="e.g. The Beej AI gave very helpful advice about government schemes. The financial calculator was easy to use..."
+            placeholder={t('feedback_written_ph')}
             value={feedback}
             onChange={e => setFeedback(e.target.value)}
             rows={4}
@@ -169,7 +179,7 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
 
         {/* Improvement chips */}
         <div className={styles.card}>
-          <div className={styles.cardTitle}>🚀 What Should We Improve?</div>
+          <div className={styles.cardTitle}>{t('feedback_improvements')}</div>
           <div className={styles.chipGroup}>
             {SUGGEST_CHIPS.map(c => (
               <button
@@ -183,10 +193,10 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
 
         {/* Suggestions */}
         <div className={styles.card}>
-          <div className={styles.cardTitle}>💡 Additional Suggestions</div>
+          <div className={styles.cardTitle}>{t('feedback_improvements')}</div>
           <textarea
             className={styles.textarea}
-            placeholder="Any other features or improvements you'd like to see..."
+            placeholder={t('feedback_suggestion_ph')}
             value={suggestion}
             onChange={e => setSuggestion(e.target.value)}
             rows={3}
@@ -199,7 +209,7 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
           onClick={handleSubmit}
           disabled={rating === 0}
         >
-          ⭐ Submit Feedback
+          {t('feedback_submit_btn')}
         </button>
 
         <div style={{ textAlign: 'center' }}>
@@ -207,7 +217,7 @@ export default function Feedback({ businessContext, onSubmit, onBack, onGoHome }
             onClick={onBack}
             style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            ← Back to Final Report
+                        {t('back')} {t('m3_title')}
           </button>
         </div>
 

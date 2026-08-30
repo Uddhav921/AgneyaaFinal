@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './index.css';
 import { useAuth } from './hooks/useAuth';
 import { useSessionStore } from './hooks/useSessionStore';
+import { signInWithGoogle } from './lib/supabase';
 
 // ── Layout & Auth ──────────────────────────────────────
 import Navbar from './components/Navbar';
@@ -276,7 +277,13 @@ export default function App() {
         <Navbar onProfileClick={user ? handleProfileClick : undefined} />
         <LandingPage
           isLoggedIn={!!user}
-          onGetStarted={() => setAppState(user ? 'inputMethod' : 'onboarding')}
+          onGetStarted={() => {
+            if (user) {
+              setAppState('inputMethod');
+            } else {
+              signInWithGoogle();
+            }
+          }}
           onDashboard={user ? handleProfileClick : undefined}
         />
       </>

@@ -1,6 +1,7 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styles from './VoiceRecorder.module.css';
 import PageNav from './PageNav';
+import { useLanguage } from '../hooks/useLanguage.jsx';
 
 export default function VoiceRecorder({ onTranscriptReady, onBack }) {
   const [phase, setPhase] = useState('idle');
@@ -10,6 +11,7 @@ export default function VoiceRecorder({ onTranscriptReady, onBack }) {
   const recogRef = useRef(null);
   const timerRef = useRef(null);
   const linesRef = useRef([]);
+  const { language } = useLanguage();
   const isSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
 
   const startTimer = () => {
@@ -27,7 +29,13 @@ export default function VoiceRecorder({ onTranscriptReady, onBack }) {
     }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recog = new SR();
-    recog.lang = 'en-IN';
+    
+    // Map standard language codes to IN variants for speech recognition
+    const langMap = {
+      en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN', gu: 'gu-IN',
+      ta: 'ta-IN', te: 'te-IN', kn: 'kn-IN', bn: 'bn-IN',
+    };
+    recog.lang = langMap[language] || 'en-IN';
     recog.continuous = true;
     recog.interimResults = true;
     linesRef.current = [];

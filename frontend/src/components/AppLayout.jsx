@@ -1,5 +1,6 @@
 import styles from './AppLayout.module.css';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../hooks/useLanguage.jsx';
 
 /**
  * Sidebar navigation items — maps to the 4 module flow.
@@ -73,7 +74,17 @@ export function getNavId(appState) {
  *   children         — main content area
  */
 export default function AppLayout({ appState, user, completedModules = {}, onNavigate, onHome, children }) {
+  const { t } = useLanguage();
   const activeId = getNavId(appState);
+
+  // Build translated nav items inside the component so t() is live
+  const NAV_ITEMS_T = [
+    { id: 'dashboard', icon: '⬛', label: t('nav_dashboard'), sub: t('nav_dashboard_sub'), stateKeys: ['dashboard'], alwaysOn: true },
+    { id: 'chat',      icon: '🌱', label: t('nav_beej'),      sub: t('nav_beej_sub'),      stateKeys: ['chat'],      badge: 'Module 1', moduleId: 'm1' },
+    { id: 'mool',      icon: '💰', label: t('nav_mool'),      sub: t('nav_mool_sub'),      stateKeys: ['mool'],      badge: 'Module 2', moduleId: 'm2' },
+    { id: 'report',    icon: '📊', label: t('nav_report'),    sub: t('nav_report_sub'),    stateKeys: ['report'],    badge: 'Module 3', moduleId: 'm3' },
+    { id: 'feedback',  icon: '⭐', label: t('nav_feedback'),  sub: t('nav_feedback_sub'),  stateKeys: ['feedback'],  badge: 'Module 4', moduleId: 'm4' },
+  ];
 
   const isAccessible = (item) => {
     if (item.alwaysOn) return true;
@@ -120,12 +131,12 @@ export default function AppLayout({ appState, user, completedModules = {}, onNav
 
         {/* Navigation Items */}
         <nav className={styles.nav} aria-label="Module Navigation">
-          {NAV_ITEMS.map((item, idx) => {
+          {NAV_ITEMS_T.map((item, idx) => {
             const accessible = isAccessible(item);
             const done       = isDone(item);
             const isActive   = item.stateKeys.includes(appState);
             const locked     = !accessible;
-            const isLast     = idx === NAV_ITEMS.length - 1;
+            const isLast     = idx === NAV_ITEMS_T.length - 1;
 
             return (
               <button
@@ -176,7 +187,7 @@ export default function AppLayout({ appState, user, completedModules = {}, onNav
             </div>
             <div className={styles.userMeta}>
               <div className={styles.userName}>{userName}</div>
-              <div className={styles.userRole}>Rural Entrepreneur</div>
+              <div className={styles.userRole}>{t('nav_rural_entrepreneur')}</div>
             </div>
             <button className={styles.signOutBtn} onClick={handleSignOut} title="Sign out">⎋</button>
           </div>

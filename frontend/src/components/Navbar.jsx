@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, signInWithGoogle, signOut } from '../lib/supabase';
 import styles from './Navbar.module.css';
+import { useLanguage } from '../hooks/useLanguage.jsx';
 
 const GoogleIcon = () => (
   <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
@@ -12,6 +13,7 @@ const GoogleIcon = () => (
 );
 
 export default function Navbar({ onProfileClick }) {
+  const { t } = useLanguage();
   const [user, setUser]       = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -72,8 +74,8 @@ export default function Navbar({ onProfileClick }) {
             )}
             <span className={styles.userName}>{userName}</span>
           </div>
-          <button className={styles.signOutBtn} onClick={handleSignOut} aria-label="Sign out">
-            Sign Out
+          <button className={styles.signOutBtn} onClick={handleSignOut} aria-label={t('sign_out')}>
+            {t('sign_out')}
           </button>
         </div>
       ) : (
@@ -85,7 +87,7 @@ export default function Navbar({ onProfileClick }) {
           aria-label="Sign in with Google"
         >
           <GoogleIcon />
-          {loading ? 'Redirecting…' : 'Sign In'}
+          {loading ? t('redirecting') : t('sign_in')}
         </button>
       )}
     </nav>

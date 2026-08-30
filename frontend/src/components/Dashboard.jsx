@@ -1,4 +1,5 @@
 import styles from './Dashboard.module.css';
+import { useLanguage } from '../hooks/useLanguage.jsx';
 
 const CAT_LABELS = {
   agriculture: '🌾 Agriculture', retail: '🏪 Retail', food: '🍱 Food Processing',
@@ -25,6 +26,7 @@ function fmtINR(n) {
  *   onEditInputs     — () => void — re-opens the input form
  */
 export default function Dashboard({ businessContext, user, completedModules = {}, onModule, onEditInputs }) {
+  const { t } = useLanguage();
   const bc = businessContext || {};
   const name = user?.user_metadata?.full_name || bc.full_name || 'Entrepreneur';
   const cat  = CAT_LABELS[bc.category] || bc.category || 'Business';
@@ -38,10 +40,10 @@ export default function Dashboard({ businessContext, user, completedModules = {}
       stateKey: 'chat',
       tag: 'Module 1',
       icon: '🌱',
-      title: 'Beej Analysis',
-      desc: 'AI-powered market feasibility analysis with live data from India Post, OSM, and Agmarknet.',
+      title: t('m1_title'),
+      desc: t('m1_desc'),
       features: ['Market Reach Estimation', 'Opportunity Analysis', 'SWOT & Threats', 'Competitor Mapping', 'Product Market Value'],
-      btnLabel: completedModules.m1 ? 'Continue Chat' : 'Start Analysis',
+      btnLabel: completedModules.m1 ? t('m1_btn_done') : t('m1_btn'),
       status: completedModules.m1 ? 'done' : 'active',
       cls: styles.m1,
     },
@@ -50,10 +52,10 @@ export default function Dashboard({ businessContext, user, completedModules = {}
       stateKey: 'mool',
       tag: 'Module 2',
       icon: '💰',
-      title: 'Mool Financial Plan',
-      desc: 'Project cost calculator, loan & EMI planner, government scheme auto-selection.',
+      title: t('m2_title'),
+      desc: t('m2_desc'),
       features: ['Project Cost Calculation', 'Scheme Auto-Selection', 'Loan Amount (90%)', 'EMI Schedule', 'Working Capital Estimate'],
-      btnLabel: completedModules.m2 ? 'View Calculations' : 'Calculate Financials',
+      btnLabel: completedModules.m2 ? t('m2_btn_done') : t('m2_btn'),
       status: completedModules.m2 ? 'done' : completedModules.m1 ? 'active' : 'locked',
       cls: styles.m2,
       locked: !completedModules.m1,
@@ -63,10 +65,10 @@ export default function Dashboard({ businessContext, user, completedModules = {}
       stateKey: 'report',
       tag: 'Module 3',
       icon: '📊',
-      title: 'Final Report',
-      desc: 'Complete business feasibility report combining Beej + Mool data into an actionable document.',
+      title: t('m3_title'),
+      desc: t('m3_desc'),
       features: ['Complete Business Analysis', 'Business Report', 'Overall Feasibility Score', 'Conclusion & Recommendations'],
-      btnLabel: completedModules.m3 ? 'View Report' : 'Generate Report',
+      btnLabel: completedModules.m3 ? t('m3_btn_done') : t('m3_btn'),
       status: completedModules.m3 ? 'done' : completedModules.m2 ? 'active' : 'locked',
       cls: styles.m3,
       locked: !completedModules.m2,
@@ -76,10 +78,10 @@ export default function Dashboard({ businessContext, user, completedModules = {}
       stateKey: 'feedback',
       tag: 'Module 4',
       icon: '⭐',
-      title: 'Feedback',
-      desc: 'Share your experience, rate accuracy, and suggest improvements for the platform.',
+      title: t('m4_title'),
+      desc: t('m4_desc'),
       features: ['Star Rating', 'Platform Feedback', 'Suggestions for improvement', 'Community Insights'],
-      btnLabel: completedModules.m4 ? 'Submitted ✓' : 'Give Feedback',
+      btnLabel: completedModules.m4 ? t('m4_btn_done') : t('m4_btn'),
       status: completedModules.m4 ? 'done' : completedModules.m3 ? 'active' : 'locked',
       cls: styles.m4,
       locked: !completedModules.m3,
@@ -93,7 +95,7 @@ export default function Dashboard({ businessContext, user, completedModules = {}
       <div className={styles.banner}>
         <div className={styles.bannerTop}>
           <div className={styles.welcomeText}>
-            <span className={styles.welcomeHi}>Welcome back</span>
+            <span className={styles.welcomeHi}>{t('dashboard_welcome_back')}</span>
             <h1 className={styles.welcomeName}>🌱 {name}</h1>
             <p className={styles.welcomeBiz}>
               <strong>{bc.business_idea?.slice(0, 55) || cat}</strong>
@@ -101,16 +103,16 @@ export default function Dashboard({ businessContext, user, completedModules = {}
             </p>
           </div>
           <button className={styles.editBtn} onClick={onEditInputs}>
-            ✏️ Edit My Details
+            {t('dashboard_edit_details')}
           </button>
         </div>
 
         <div className={styles.progress}>
-          <span className={styles.progressLabel}>Overall Progress</span>
+          <span className={styles.progressLabel}>{t('dashboard_progress')}</span>
           <div className={styles.progressBar}>
             <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
           </div>
-          <span className={styles.progressPct}>{totalDone}/4 Modules · {progressPct}%</span>
+          <span className={styles.progressPct}>{totalDone}/4 {t('dashboard_modules_label')} · {progressPct}%</span>
         </div>
       </div>
 
@@ -125,7 +127,7 @@ export default function Dashboard({ businessContext, user, completedModules = {}
 
       {/* Main Body */}
       <div className={styles.body}>
-        <div className={styles.sectionTitle}>Your Modules</div>
+        <div className={styles.sectionTitle}>{t('dashboard_your_modules')}</div>
 
         {/* 4 Module Cards */}
         <div className={styles.moduleGrid}>
@@ -138,9 +140,9 @@ export default function Dashboard({ businessContext, user, completedModules = {}
               <div className={styles.cardTop}>
                 <div className={styles.cardIcon}>{mod.icon}</div>
                 <span className={`${styles.statusBadge} ${styles[mod.status]}`}>
-                  {mod.status === 'done'   ? '✓ Complete' :
-                   mod.status === 'active' ? '→ Active'   :
-                   mod.status === 'locked' ? '🔒 Locked'  : 'Pending'}
+                  {mod.status === 'done'   ? t('complete') :
+                   mod.status === 'active' ? t('active')   :
+                   mod.status === 'locked' ? t('locked')   : 'Pending'}
                 </span>
               </div>
               <div>
@@ -155,7 +157,7 @@ export default function Dashboard({ businessContext, user, completedModules = {}
               </div>
               <div className={styles.cardAction}>
                 <span className={styles.cardBtn}>
-                  {mod.locked ? '🔒 Locked' : mod.btnLabel} {!mod.locked && '→'}
+                  {mod.locked ? t('locked') : mod.btnLabel} {!mod.locked && '→'}
                 </span>
               </div>
             </button>
@@ -163,20 +165,20 @@ export default function Dashboard({ businessContext, user, completedModules = {}
         </div>
 
         {/* Info cards */}
-        <div className={styles.sectionTitle}>Your Business Overview</div>
+        <div className={styles.sectionTitle}>{t('dashboard_business_overview')}</div>
         <div className={styles.infoRow}>
           <div className={styles.infoCard}>
-            <div className={styles.infoCardTitle}>💡 Business Idea</div>
+            <div className={styles.infoCardTitle}>{t('dashboard_idea')}</div>
             <div className={styles.infoCardValue}>{bc.business_idea?.slice(0, 40) || '—'}</div>
             <div className={styles.infoCardSub}>{cat}</div>
           </div>
           <div className={styles.infoCard}>
-            <div className={styles.infoCardTitle}>💵 Available Capital</div>
+            <div className={styles.infoCardTitle}>{t('dashboard_capital')}</div>
             <div className={styles.infoCardValue}>{fmtINR(Number(bc.own_capital)) || '—'}</div>
-            <div className={styles.infoCardSub}>Own funds available</div>
+            <div className={styles.infoCardSub}>{t('dashboard_own_funds')}</div>
           </div>
           <div className={styles.infoCard}>
-            <div className={styles.infoCardTitle}>📍 Location</div>
+            <div className={styles.infoCardTitle}>{t('dashboard_location')}</div>
             <div className={styles.infoCardValue}>{bc.village || '—'}</div>
             <div className={styles.infoCardSub}>{[bc.block, bc.district].filter(Boolean).join(', ')}</div>
           </div>

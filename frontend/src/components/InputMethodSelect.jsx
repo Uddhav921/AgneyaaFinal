@@ -1,5 +1,6 @@
-﻿import styles from './InputMethodSelect.module.css';
+import styles from './InputMethodSelect.module.css';
 import PageNav from './PageNav';
+import { useLanguage } from '../hooks/useLanguage.jsx';
 
 /**
  * InputMethodSelect - Step 2a
@@ -11,6 +12,8 @@ import PageNav from './PageNav';
  * onSelect - called with 'text' or 'voice'
  */
 export default function InputMethodSelect({ onSelect, onBack }) {
+  const { t } = useLanguage();
+
   return (
     <div className={styles.wrap}>
       <div className={styles.card}>
@@ -21,8 +24,8 @@ export default function InputMethodSelect({ onSelect, onBack }) {
         {/* Header */}
         <div className={styles.header}>
           <span className={styles.icon}>💬</span>
-          <h2>How would you like to share your business details?</h2>
-          <p>Choose the method that feels most comfortable for you.</p>
+          <h2>{t('input_method_heading')}</h2>
+          <p>{t('input_method_subtitle')}</p>
         </div>
 
         {/* Options */}
@@ -36,9 +39,9 @@ export default function InputMethodSelect({ onSelect, onBack }) {
           >
             <span className={styles.optionIcon}>⌨️</span>
             <div className={styles.optionBody}>
-              <span className={styles.optionTitle}>Type it out</span>
+              <span className={styles.optionTitle}>{t('input_method_type_title')}</span>
               <span className={styles.optionDesc}>
-                Fill a short form with your details — takes about 2 minutes.
+                {t('input_method_type_desc')}
               </span>
             </div>
             <span className={styles.arrow}>→</span>
@@ -52,9 +55,9 @@ export default function InputMethodSelect({ onSelect, onBack }) {
           >
             <span className={styles.optionIcon}>🎙️</span>
             <div className={styles.optionBody}>
-              <span className={styles.optionTitle}>Speak it out</span>
+              <span className={styles.optionTitle}>{t('input_method_voice_title')}</span>
               <span className={styles.optionDesc}>
-                Just talk — we will listen and fill the form automatically for you.
+                {t('input_method_voice_desc')}
               </span>
             </div>
             <span className={styles.badge}>NEW</span>
@@ -62,7 +65,7 @@ export default function InputMethodSelect({ onSelect, onBack }) {
 
         </div>
 
-        <p className={styles.hint}>🔒 Your information is private and secure.</p>
+        <p className={styles.hint}>{t('input_method_privacy')}</p>
       </div>
     </div>
   );

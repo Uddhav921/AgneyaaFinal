@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import styles from './LandingPage.module.css';
+import { useLanguage } from '../hooks/useLanguage.jsx';
 
 // ── Static data ───────────────────────────────────────────────────
 
@@ -126,6 +127,8 @@ const TRUST_POINTS = [
  *   onDashboard   — () => void — takes logged-in user to dashboard
  */
 export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
+  const { t } = useLanguage();
+  
   // Read real user reviews from localStorage (submitted via Feedback.jsx)
   const reviews = useMemo(() => {
     try {
@@ -151,18 +154,16 @@ export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
         <div className={styles.heroInner}>
           <div className={styles.heroPill}>
             <div className={styles.pillDot} />
-            Powered by Gemini AI · Live Government APIs
+            {t('hero_pill') || 'Powered by Gemini AI · Live Government APIs'}
           </div>
 
           <h1 className={styles.heroTitle}>
-            <span className={styles.heroGrad}>Hyper-Local AI</span><br />
-            Business & Financial Advisor
+            <span className={styles.heroGrad}>{t('hero_title_1') || 'Hyper-Local AI'}</span><br />
+            {t('hero_title_2') || 'Business & Financial Advisor'}
           </h1>
 
           <p className={styles.heroTagline}>
-            Agneyaa empowers rural Indian entrepreneurs with real market data, 
-            AI-powered feasibility analysis, and instant government scheme matching — 
-            in your own language.
+            {t('hero_tagline') || 'Agneyaa empowers rural Indian entrepreneurs with real market data, AI-powered feasibility analysis, and instant government scheme matching — in your own language.'}
           </p>
 
           <div className={styles.heroStats}>
@@ -188,15 +189,15 @@ export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
             {isLoggedIn && onDashboard ? (
               <>
                 <button className={styles.ctaDash} onClick={onDashboard}>
-                  ⬛ Go to Dashboard →
+                  {t('cta_dash') || '⬛ Go to Dashboard →'}
                 </button>
                 <button className={styles.ctaPrimary} onClick={onGetStarted}>
-                  🌱 New Analysis
+                  {t('cta_new') || '🌱 New Analysis'}
                 </button>
               </>
             ) : (
               <button className={styles.ctaPrimary} onClick={onGetStarted}>
-                🚀 Get Started — It's Free
+                {t('cta_start') || "🚀 Get Started — It's Free"}
               </button>
             )}
           </div>
@@ -212,8 +213,8 @@ export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
 
       {/* ═══ THE PROBLEM ════════════════════════════════════════ */}
       <section className={styles.section}>
-        <div className={styles.sectionTag}>⚠️ The Problem</div>
-        <h2 className={styles.sectionTitle}>Rural Entrepreneurs Face Impossible Odds</h2>
+        <div className={styles.sectionTag}>{t('sec_problem_tag') || '⚠️ The Problem'}</div>
+        <h2 className={styles.sectionTitle}>{t('sec_problem_title') || 'Rural Entrepreneurs Face Impossible Odds'}</h2>
         <p className={styles.sectionSub}>
           Starting a business in rural India means navigating without maps — no local data, no financial guidance, no scheme awareness.
         </p>
@@ -234,8 +235,8 @@ export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
       {/* ═══ HOW IT WORKS ═══════════════════════════════════════ */}
       <div className={styles.howBg}>
         <div className={styles.section}>
-          <div className={styles.sectionTag}>⚙️ How It Works</div>
-          <h2 className={styles.sectionTitle}>Five Steps to Business Clarity</h2>
+          <div className={styles.sectionTag}>{t('sec_how_tag') || '⚙️ How It Works'}</div>
+          <h2 className={styles.sectionTitle}>{t('sec_how_title') || 'Five Steps to Business Clarity'}</h2>
           <p className={styles.sectionSub}>
             From your first input to a complete feasibility report — all in under 15 minutes.
           </p>
@@ -263,8 +264,8 @@ export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
 
       {/* ═══ OUR MODULES ════════════════════════════════════════ */}
       <section className={styles.section}>
-        <div className={styles.sectionTag}>🧩 Our Modules</div>
-        <h2 className={styles.sectionTitle}>4 Powerful Modules, 1 Platform</h2>
+        <div className={styles.sectionTag}>{t('sec_modules_tag') || '🧩 Our Modules'}</div>
+        <h2 className={styles.sectionTitle}>{t('sec_modules_title') || '4 Powerful Modules, 1 Platform'}</h2>
         <p className={styles.sectionSub}>
           Each module builds on the previous — giving you a complete, evidence-backed business plan.
         </p>
@@ -288,8 +289,8 @@ export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
       {/* ═══ EVIDENCE-BASED APPROACH ════════════════════════════ */}
       <div className={styles.evidenceBg}>
         <div className={styles.section}>
-          <div className={styles.sectionTag}>🔬 Evidence-Based Approach</div>
-          <h2 className={styles.sectionTitle}>Every Claim Has a Source</h2>
+          <div className={styles.sectionTag}>{t('sec_evidence_tag') || '🔬 Evidence-Based Approach'}</div>
+          <h2 className={styles.sectionTitle}>{t('sec_evidence_title') || 'Every Claim Has a Source'}</h2>
           <p className={styles.sectionSub}>
             We tag every piece of data so you always know what's verified, what's estimated, and what's from you.
           </p>
@@ -332,8 +333,8 @@ export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
 
       {/* ═══ DATA SOURCES ═══════════════════════════════════════ */}
       <section className={styles.section}>
-        <div className={styles.sectionTag}>📡 Data Sources</div>
-        <h2 className={styles.sectionTitle}>Built on Real, Authoritative Data</h2>
+        <div className={styles.sectionTag}>{t('sec_sources_tag') || '📡 Data Sources'}</div>
+        <h2 className={styles.sectionTitle}>{t('sec_sources_title') || 'Built on Real, Authoritative Data'}</h2>
         <p className={styles.sectionSub}>
           Agneyaa fetches live data from government and open-data sources — no manual research required.
         </p>
@@ -378,8 +379,8 @@ export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
       {/* ═══ USER REVIEWS ═══════════════════════════════════════ */}
       <div className={styles.reviewsBg}>
         <div className={styles.section}>
-          <div className={styles.sectionTag}>⭐ User Feedback</div>
-          <h2 className={styles.sectionTitle}>What Entrepreneurs Say</h2>
+          <div className={styles.sectionTag}>{t('sec_reviews_tag') || '⭐ User Feedback'}</div>
+          <h2 className={styles.sectionTitle}>{t('sec_reviews_title') || 'What Entrepreneurs Say'}</h2>
           <p className={styles.sectionSub}>
             {reviews.length > 0
               ? `${reviews.length} real feedback submissions from users like you.`
@@ -442,8 +443,8 @@ export default function LandingPage({ isLoggedIn, onGetStarted, onDashboard }) {
 
       {/* ═══ FOOTER ═════════════════════════════════════════════ */}
       <footer className={styles.footer}>
-        <span className={styles.footerBrand}>🔥 Agneyaa</span>
-        <span>Built for SIH 2026 · Powered by Gemini AI</span>
+        <span className={styles.footerBrand}>{t('footer_brand') || '🔥 Agneyaa'}</span>
+        <span>{t('footer_tag') || 'Built for SIH 2026 · Powered by Gemini AI'}</span>
         <span>India Post · OSM · Agmarknet · NABARD</span>
       </footer>
 

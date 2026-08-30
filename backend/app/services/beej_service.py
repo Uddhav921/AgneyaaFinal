@@ -305,6 +305,13 @@ async def generate_followup_questions(
     Generates 4 contextual follow-up question chips based on the conversation so far.
     Uses a separate fast Gemini call.
     """
+    _lang_map = {
+        'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'gu': 'Gujarati',
+        'ta': 'Tamil',   'te': 'Telugu','kn': 'Kannada', 'bn': 'Bengali',
+    }
+    lang_code     = business_context.get('language', 'en') or 'en'
+    language_name = _lang_map.get(lang_code, 'English')
+
     try:
         bc = business_context
         history_summary = "\n".join([
@@ -323,8 +330,9 @@ Recent conversation:
 
 Last Beej response (summary): {last_response[:300]}
 
-Output ONLY a JSON array of 4 short question strings (each under 60 characters). No explanations, no markdown.
-Example: ["What is my expected monthly profit?", "Which scheme should I apply for?", "Who are my main competitors?", "What documents do I need?"]"""
+CRITICAL LANGUAGE REQUIREMENT: You MUST write ALL 4 questions in {language_name} (code: {lang_code}). Do NOT use English unless {language_name} is English.
+
+Output ONLY a JSON array of 4 short question strings (each under 80 characters). No explanations, no markdown."""
 
         response = client.models.generate_content(
             model="gemini-3.6-flash",

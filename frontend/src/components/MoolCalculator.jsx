@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import styles from './MoolCalculator.module.css';
+import { useLanguage } from '../hooks/useLanguage.jsx';
 
 // Government scheme database (frontend-only)
 const SCHEMES = {
@@ -62,6 +63,7 @@ function makeSchedule(principal, rateAnnual, months, moratoriumMonths = 0) {
  *   onMoolData       — (data) => void — pass computed data up
  */
 export default function MoolCalculator({ businessContext, onNext, onBack, onMoolData }) {
+  const { t } = useLanguage();
   const bc     = businessContext || {};
   const scheme = SCHEMES[bc.category] || DEFAULT_SCHEME;
 
@@ -95,7 +97,7 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
       <div className={styles.header}>
         <div>
           <span className={styles.badge}>💰 Module 2</span>
-          <h2 className={styles.title}>Mool Financial Calculator</h2>
+          <h2 className={styles.title}>{t('mool_title')}</h2>
           <p className={styles.subtitle}>
             Loan eligibility · EMI planning · Government scheme matching for{' '}
             <strong>{bc.business_idea?.slice(0,45) || 'your business'}</strong>
@@ -105,7 +107,7 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
 
       {/* Auto-selected Scheme */}
       <div className={styles.card}>
-        <div className={styles.cardTitle}>🏛️ Auto-Selected Government Scheme</div>
+        <div className={styles.cardTitle}>{t('mool_scheme')}</div>
         <div className={styles.schemeCard}>
           <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
             <span className={styles.schemeName}>{scheme.name}</span>
@@ -113,10 +115,10 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
           </div>
           <div className={styles.schemeGrid}>
             {[
-              ['Interest Rate', `${scheme.rate}% p.a.`],
+              [t('mool_interest_rate'), `${scheme.rate}% p.a.`],
               ['Max Subsidy', scheme.subsidy],
               ['Max Loan', fmtINR(scheme.max)],
-              ['Moratorium', `${scheme.moratorium} months`],
+              [t('mool_moratorium'), `${scheme.moratorium} ${t('mool_months')}`],
             ].map(([k,v]) => (
               <div className={styles.schemeField} key={k}>
                 <span className={styles.schemeFieldLabel}>{k}</span>
@@ -138,7 +140,7 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
           <div className={styles.cardTitle}>🔢 Adjust Your Numbers</div>
 
           <div className={styles.inputGroup}>
-            <label className={styles.label}>Total Project Cost</label>
+            <label className={styles.label}>{t('mool_project_cost')}</label>
             <div className={styles.inputWrap}>
               <span className={styles.inputPrefix}>₹</span>
               <input className={styles.input} type="number" value={projectCost}
@@ -147,7 +149,7 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
           </div>
 
           <div className={styles.inputGroup}>
-            <label className={styles.label}>Own Capital Available</label>
+            <label className={styles.label}>{t('mool_own_capital')}</label>
             <div className={styles.inputWrap}>
               <span className={styles.inputPrefix}>₹</span>
               <input className={styles.input} type="number" value={ownCapital}
@@ -156,17 +158,17 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
           </div>
 
           <div className={styles.inputGroup}>
-            <label className={styles.label}>Loan Tenure</label>
+            <label className={styles.label}>{t('mool_loan_tenure')}</label>
             <div className={styles.sliderRow}>
               <input className={styles.slider} type="range" min="12" max="120" step="6"
                 value={tenureMonths} style={{ '--val': `${tenurePct}%` }}
                 onChange={e => setTenureMonths(Number(e.target.value))} />
-              <span className={styles.sliderVal}>{tenureMonths} mo.</span>
+              <span className={styles.sliderVal}>{tenureMonths} {t('mool_months')}</span>
             </div>
           </div>
 
           <div className={styles.inputGroup}>
-            <label className={styles.label}>Interest Rate (% p.a.)</label>
+            <label className={styles.label}>{t('mool_interest_rate')} (% p.a.)</label>
             <div className={styles.sliderRow}>
               <input className={styles.slider} type="range" min="5" max="18" step="0.5"
                 value={interestRate} style={{ '--val': `${((interestRate-5)/13)*100}%` }}
@@ -176,7 +178,7 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
           </div>
 
           <div className={styles.inputGroup}>
-            <label className={styles.label}>Capital Subsidy (%)</label>
+            <label className={styles.label}>{t('mool_subsidy')}</label>
             <div className={styles.sliderRow}>
               <input className={styles.slider} type="range" min="0" max="35" step="5"
                 value={subsidyPct} style={{ '--val': `${(subsidyPct/35)*100}%` }}
@@ -192,9 +194,9 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
 
           <div className={styles.resultRow}>
             {[
-              { icon:'📋', label:'Project Cost',   val: fmtINR(projectCost), cls:'' },
-              { icon:'🏦', label:'Gross Loan (90%)',val: fmtINR(moolData.grossLoan), cls:'blue' },
-              { icon:'🎁', label:`Subsidy (${subsidyPct}%)`, val: fmtINR(moolData.subsidy), cls:'green' },
+              { icon:'📋', label: t('mool_project_cost'),   val: fmtINR(projectCost), cls:'' },
+              { icon:'🏦', label: t('mool_gross_loan'),val: fmtINR(moolData.grossLoan), cls:'blue' },
+              { icon:'🎁', label:`${t('mool_subsidy_amt')} (${subsidyPct}%)`, val: fmtINR(moolData.subsidy), cls:'green' },
             ].map(r => (
               <div className={styles.resultItem} key={r.label}>
                 <span className={styles.resultIcon}>{r.icon}</span>
@@ -206,9 +208,9 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
 
           <div className={styles.resultRow}>
             {[
-              { icon:'💳', label:'Net Loan',       val: fmtINR(moolData.netLoan),    cls:'gold'  },
-              { icon:'📅', label:'Monthly EMI',    val: fmtINR(moolData.emi),         cls:'gold'  },
-              { icon:'🔧', label:'Working Capital', val: fmtINR(moolData.workingCap), cls:'green' },
+              { icon:'💳', label: t('mool_net_loan'),       val: fmtINR(moolData.netLoan),    cls:'gold'  },
+              { icon:'📅', label: t('mool_emi'),             val: fmtINR(moolData.emi),         cls:'gold'  },
+              { icon:'🔧', label: t('mool_working_capital'), val: fmtINR(moolData.workingCap), cls:'green' },
             ].map(r => (
               <div className={styles.resultItem} key={r.label}>
                 <span className={styles.resultIcon}>{r.icon}</span>
@@ -220,8 +222,8 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
 
           <div className={styles.resultRow} style={{ gridTemplateColumns:'1fr 1fr' }}>
             {[
-              { icon:'📈', label:'Total Interest', val: fmtINR(moolData.totalInterest), cls:'' },
-              { icon:'💰', label:'Total Payable',  val: fmtINR(moolData.totalPayable),  cls:'' },
+              { icon:'📈', label: t('mool_total_interest'), val: fmtINR(moolData.totalInterest), cls:'' },
+              { icon:'💰', label: t('mool_total_interest'),  val: fmtINR(moolData.totalPayable),  cls:'' },
             ].map(r => (
               <div className={styles.resultItem} key={r.label}>
                 <span className={styles.resultIcon}>{r.icon}</span>
@@ -248,18 +250,18 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
           <div style={{ overflowX:'auto' }}>
             <table className={styles.scheduleTable}>
               <thead>
-                <tr><th>Month</th><th>EMI Paid</th><th>Principal</th><th>Interest</th><th>Balance</th><th>Status</th></tr>
+                <tr><th>{t('mool_month')}</th><th>{t('mool_emi_col')}</th><th>{t('mool_principal')}</th><th>{t('mool_interest')}</th><th>{t('mool_balance')}</th><th>Status</th></tr>
               </thead>
               <tbody>
                 {moolData.schedule.map(row => (
                   <tr key={row.month}>
-                    <td>Month {row.month}</td>
+                    <td>{t('mool_month')} {row.month}</td>
                     <td>{row.moratorium ? '—' : fullINR(Math.round(row.emi))}</td>
                     <td>{row.moratorium ? '—' : fullINR(Math.round(row.principal))}</td>
                     <td>{fullINR(Math.round(row.interest))}</td>
                     <td>{fullINR(Math.round(row.balance))}</td>
                     <td style={{ color: row.moratorium ? 'var(--warn)' : 'var(--leaf)', fontWeight:600, fontSize:'0.7rem' }}>
-                      {row.moratorium ? '⏸ Moratorium' : '✓ Active'}
+                      {row.moratorium ? `⏸ ${t('mool_moratorium')}` : '✓ Active'}
                     </td>
                   </tr>
                 ))}
@@ -276,10 +278,10 @@ export default function MoolCalculator({ businessContext, onNext, onBack, onMool
 
       {/* Footer */}
       <div className={styles.footer}>
-        <button className={styles.backBtn} onClick={onBack}>← Back to Beej Analysis</button>
+        <button className={styles.backBtn} onClick={onBack}>{t('back')} Beej Analysis</button>
         <span className={styles.footerNote}>💡 Adjust sliders to compare different scenarios</span>
         <button className={styles.nextBtn} onClick={() => onNext?.(moolData)}>
-          View Full Report →
+          {t('mool_proceed')}
         </button>
       </div>
 

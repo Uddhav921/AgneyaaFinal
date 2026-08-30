@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import styles from './InputForm.module.css';
 import PageNav from './PageNav';
+import { useLanguage } from '../hooks/useLanguage.jsx';
 
 const CATEGORIES = [
   { value: 'agriculture',   label: '🌾 Agriculture & Farming' },
@@ -35,16 +36,13 @@ const LAND_OPTIONS = [
 ];
 
 /**
- * InputForm — Step 2.
- * Collects: full_name, phone, village, block, district, business idea, own capital, category.
- */
-/**
  * InputForm — Step 2b (text mode).
  * Collects: full_name, phone, village, block, district, business idea,
  * own capital, category, caste_category, land_owned, target_customers.
  * Accepts initialData to pre-populate fields from voice transcript.
  */
 export default function InputForm({ onSubmit, loading, initialData = {}, onBack, onFormChange }) {
+  const { t } = useLanguage();
   const formRef = useRef(null);
   const [form, setForm] = useState({
     full_name:        initialData.full_name        || '',
@@ -72,20 +70,20 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
 
   const validate = () => {
     const e = {};
-    if (!form.full_name.trim())           e.full_name        = 'Full name is required';
-    if (!form.phone.trim())               e.phone            = 'Mobile number is required';
+    if (!form.full_name.trim())           e.full_name        = t('form_err_name');
+    if (!form.phone.trim())               e.phone            = t('form_err_phone');
     else if (!/^[6-9]\d{9}$/.test(form.phone.trim()))
-                                          e.phone            = 'Enter a valid 10-digit Indian mobile number';
-    if (!form.village.trim())             e.village          = 'Village is required';
-    if (!form.block.trim())               e.block            = 'Block is required';
-    if (!form.district.trim())            e.district         = 'District is required';
-    if (!form.business_idea.trim())       e.business_idea    = 'Describe your business idea';
+                                          e.phone            = t('form_err_phone_invalid');
+    if (!form.village.trim())             e.village          = t('form_err_village');
+    if (!form.block.trim())               e.block            = t('form_err_block');
+    if (!form.district.trim())            e.district         = t('form_err_district');
+    if (!form.business_idea.trim())       e.business_idea    = t('form_err_idea');
     if (!form.own_capital || Number(form.own_capital) <= 0)
-                                          e.own_capital      = 'Enter a valid amount';
-    if (!form.category)                   e.category         = 'Select a business category';
-    if (!form.caste_category)             e.caste_category   = 'Select your caste category';
-    if (!form.land_owned)                 e.land_owned       = 'Select land ownership';
-    if (!form.target_customers.trim())    e.target_customers = 'Describe your target customers';
+                                          e.own_capital      = t('form_err_capital');
+    if (!form.category)                   e.category         = t('form_err_category');
+    if (!form.caste_category)             e.caste_category   = t('form_err_category');
+    if (!form.land_owned)                 e.land_owned       = t('form_err_category');
+    if (!form.target_customers.trim())    e.target_customers = t('form_err_idea');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -103,39 +101,39 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
         <PageNav
           onBack={onBack}
           onForward={handleForward}
-          forwardLabel="Analyse"
+          forwardLabel={t('form_analyze_btn')}
           forwardDisabled={loading}
         />
 
         {/* Header */}
         <div className={styles.header}>
           <span className={styles.icon}>📍</span>
-          <h2>Tell us about your business</h2>
-          <p>We'll analyse local demand, calculate finances & match you to the right scheme.</p>
+          <h2>{t('form_title')}</h2>
+          <p>{t('onboard_subtitle')}</p>
         </div>
 
         {/* Step indicator */}
         <div className={styles.steps}>
           <div className={styles.step}>
-            <span>✓</span> Profile
+            <span>✓</span> {t('onboard_step_profile')}
           </div>
           <div className={styles.stepLine} />
           <div className={`${styles.step} ${styles.active}`}>
-            <span>2</span> Your Business
+            <span>2</span> {t('onboard_step_business')}
           </div>
         </div>
 
         <form ref={formRef} onSubmit={handleSubmit} className={styles.form}>
 
           {/* ── Personal Details ── */}
-          <div className={styles.sectionLabel}>👤 Personal Details</div>
+          <div className={styles.sectionLabel}>{t('form_full_name')}</div>
           <div className={styles.row2}>
 
             {/* Full Name */}
             <div className={styles.field}>
               <input
                 className={`${styles.input} ${errors.full_name ? styles.inputErr : ''}`}
-                placeholder="Full Name"
+                placeholder={t('form_full_name_ph')}
                 value={form.full_name}
                 onChange={(e) => set('full_name', e.target.value)}
               />
@@ -150,7 +148,7 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
                   type="tel"
                   maxLength={10}
                   className={`${styles.input} ${styles.inputWithPrefix91} ${errors.phone ? styles.inputErr : ''}`}
-                  placeholder="Mobile Number"
+                  placeholder={t('form_phone_ph')}
                   value={form.phone}
                   onChange={(e) => set('phone', e.target.value.replace(/\D/g, ''))}
                 />
@@ -161,12 +159,12 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
           </div>
 
           {/* ── Location ── */}
-          <div className={styles.sectionLabel}>📍 Location</div>
+          <div className={styles.sectionLabel}>{t('dashboard_location')}</div>
           <div className={styles.row3}>
             {[
-              { key: 'village',  placeholder: 'Village name' },
-              { key: 'block',    placeholder: 'Block / Tehsil' },
-              { key: 'district', placeholder: 'District' },
+              { key: 'village',  placeholder: t('form_village') },
+              { key: 'block',    placeholder: t('form_block') },
+              { key: 'district', placeholder: t('form_district') },
             ].map(({ key, placeholder }) => (
               <div key={key} className={styles.field}>
                 <input
@@ -182,10 +180,10 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
 
           {/* ── Business Idea ── */}
           <div className={styles.field}>
-            <div className={styles.sectionLabel}>💡 Business Idea</div>
+            <div className={styles.sectionLabel}>{t('form_business_idea')}</div>
             <textarea
               className={`${styles.textarea} ${errors.business_idea ? styles.inputErr : ''}`}
-              placeholder="Describe your business idea in 1-2 sentences… e.g. 'I want to start a small grocery store selling daily essentials in my village'"
+              placeholder={t('form_business_idea_ph')}
               rows={3}
               value={form.business_idea}
               onChange={(e) => set('business_idea', e.target.value)}
@@ -195,7 +193,7 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
 
           {/* ── Capital ── */}
           <div className={styles.field}>
-            <div className={styles.sectionLabel}>💰 Available Margin Money (₹)</div>
+            <div className={styles.sectionLabel}>{t('form_own_capital')}</div>
             <div className={styles.inputPrefix}>
               <span className={styles.prefix}>₹</span>
               <input
@@ -212,7 +210,7 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
 
           {/* ── Business Category ── */}
           <div className={styles.field}>
-            <div className={styles.sectionLabel}>🏪 Business Category</div>
+            <div className={styles.sectionLabel}>{t('form_category')}</div>
             <div className={styles.catGrid}>
               {CATEGORIES.map((cat) => (
                 <button
@@ -230,7 +228,7 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
 
           {/* ── Caste Category ── */}
           <div className={styles.field}>
-            <div className={styles.sectionLabel}>🪪 Caste / Social Category</div>
+            <div className={styles.sectionLabel}>{t('form_caste')}</div>
             <div className={styles.casteGrid}>
               {CASTE_CATEGORIES.map((c) => (
                 <button
@@ -248,7 +246,7 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
 
           {/* ── Land Ownership ── */}
           <div className={styles.field}>
-            <div className={styles.sectionLabel}>🌍 Land Ownership</div>
+            <div className={styles.sectionLabel}>{t('form_land')}</div>
             <div className={styles.landRow}>
               {LAND_OPTIONS.map((l) => (
                 <button
@@ -266,10 +264,10 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
 
           {/* ── Target Customers ── */}
           <div className={styles.field}>
-            <div className={styles.sectionLabel}>🎯 Target Customers</div>
+            <div className={styles.sectionLabel}>{t('form_target_customers')}</div>
             <input
               className={`${styles.input} ${errors.target_customers ? styles.inputErr : ''}`}
-              placeholder="e.g. Women in nearby villages, local farmers, school children…"
+              placeholder={t('form_target_customers_ph')}
               value={form.target_customers}
               onChange={(e) => set('target_customers', e.target.value)}
             />
@@ -278,9 +276,9 @@ export default function InputForm({ onSubmit, loading, initialData = {}, onBack,
 
           <button type="submit" className={styles.submitBtn} disabled={loading}>
             {loading ? (
-              <><span className={styles.spinner} /> Analysing…</>
+              <><span className={styles.spinner} /> {t('loading')}</>
             ) : (
-              '🔥 Analyse My Business'
+              t('form_analyze_btn')
             )}
           </button>
 

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import styles from './OnboardForm.module.css';
 import PageNav from './PageNav';
+import { useLanguage } from '../hooks/useLanguage.jsx';
+import { supabase } from '../lib/supabase';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -18,25 +20,29 @@ const LANGUAGES = [
  * Collects: preferred language + data consent.
  */
 export default function OnboardForm({ user, onComplete, onBack }) {
-  const [language, setLanguage] = useState('en');
+  const { lang, setLang, t } = useLanguage();
+  const [language, setLanguage] = useState(lang || 'en');
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const handleLangSelect = (code) => {
+    setLanguage(code);
+    setLang(code); // platform-wide switch immediately
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!consent) {
-      setError('Please provide consent to continue.');
+      setError(t('onboard_consent_required'));
       return;
     }
     setLoading(true);
     setError('');
 
     try {
-      // Save profile to backend
-      const token = (await import('../lib/supabase')).supabase.auth.getSession
-        ? (await (await import('../lib/supabase')).supabase.auth.getSession()).data.session?.access_token
-        : null;
+      const session = await supabase.auth.getSession();
+      const token = session?.data?.session?.access_token || null;
 
       await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/profile`, {
         method: 'POST',
@@ -49,7 +55,7 @@ export default function OnboardForm({ user, onComplete, onBack }) {
 
       onComplete({ language, consent });
     } catch (err) {
-      setError('Something went wrong. Please try again.');
+      setError(t('error_generic'));
     } finally {
       setLoading(false);
     }
@@ -67,15 +73,15 @@ export default function OnboardForm({ user, onComplete, onBack }) {
         <PageNav
           onBack={onBack}
           onForward={handleForward}
-          forwardLabel="Continue"
+          forwardLabel={t('continue')}
           forwardDisabled={!consent || loading}
         />
 
         {/* Header */}
         <div className={styles.header}>
           <span className={styles.wave}>👋</span>
-          <h2>Welcome, {firstName}!</h2>
-          <p>Let's set up your profile in 30 seconds.</p>
+          <h2>{t('onboard_welcome')}, {firstName}!</h2>
+          <p>{t('onboard_subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
@@ -83,26 +89,26 @@ export default function OnboardForm({ user, onComplete, onBack }) {
           {/* Step indicator */}
           <div className={styles.steps}>
             <div className={`${styles.step} ${styles.active}`}>
-              <span>1</span> Profile
+              <span>1</span> {t('onboard_step_profile')}
             </div>
             <div className={styles.stepLine} />
             <div className={styles.step}>
-              <span>2</span> Your Business
+              <span>2</span> {t('onboard_step_business')}
             </div>
           </div>
 
           {/* Language selector */}
           <div className={styles.field}>
-            <label className={styles.label}>🌐 Preferred Language</label>
+            <label className={styles.label}>{t('onboard_language_label')}</label>
             <div className={styles.langGrid}>
-              {LANGUAGES.map((lang) => (
+              {LANGUAGES.map((lg) => (
                 <button
-                  key={lang.code}
+                  key={lg.code}
                   type="button"
-                  className={`${styles.langBtn} ${language === lang.code ? styles.selected : ''}`}
-                  onClick={() => setLanguage(lang.code)}
+                  className={`${styles.langBtn} ${language === lg.code ? styles.selected : ''}`}
+                  onClick={() => handleLangSelect(lg.code)}
                 >
-                  {lang.label}
+                  {lg.label}
                 </button>
               ))}
             </div>
@@ -117,11 +123,7 @@ export default function OnboardForm({ user, onComplete, onBack }) {
                 onChange={(e) => setConsent(e.target.checked)}
                 className={styles.checkbox}
               />
-              <span>
-                I consent to Agneyaa using my location and business data to generate
-                AI-powered feasibility reports. Data is used only to improve your results
-                and is never sold.
-              </span>
+              <span>{t('onboard_consent')}</span>
             </label>
           </div>
 
@@ -132,7 +134,7 @@ export default function OnboardForm({ user, onComplete, onBack }) {
             className={styles.submitBtn}
             disabled={loading || !consent}
           >
-            {loading ? 'Saving…' : 'Continue →'}
+            {loading ? t('saving') : t('continue')}
           </button>
 
         </form>
